@@ -33,7 +33,6 @@ class ClientWebSocket extends WebSocket {
         // check: do not send anything before the first update
         // avoiding this check will result in kick
         if(this.timestamp == null) {
-
             return;
         }
 
@@ -44,22 +43,22 @@ class ClientWebSocket extends WebSocket {
         console.log('client.command', message);
 
         // dev: to demonstrate latency
-        setTimeout(
-            () => {
-                super.send(
-                    Parser.serialize(
-                        message
-                    )
-                );
-            },
-            2500
-        );
-        
-        // super.send(
-        //     Parser.serialize(
-        //         message
-        //     )
+        // setTimeout(
+        //     () => {
+        //         super.send(
+        //             Parser.serialize(
+        //                 message
+        //             )
+        //         );
+        //     },
+        //     2500
         // );
+        
+        super.send(
+            Parser.serialize(
+                message
+            )
+        );
 
         return this;
     }
@@ -143,3 +142,23 @@ window.command = function (name, data) {
 
     io.send(name, data);
 }
+
+window.addEventListener(
+    'load',
+    e => {
+        document.querySelector('#connect')
+        .addEventListener(
+            'click',
+            window.connect.bind(null, '127.0.0.1', 11000)
+        );
+
+        document.querySelector('#command')
+        .addEventListener(
+            'click',
+            window.command.bind(null, 'cmd', {})
+        );
+    },
+    {
+        once: true
+    }
+)
