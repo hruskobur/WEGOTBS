@@ -2,7 +2,7 @@ import Command from './command.js';
 
 class ApplicationMessage {
     constructor () {
-        this.ts = undefined;
+        this.timestamp = undefined;
         this.cmds = [];
     }
 
@@ -11,8 +11,8 @@ class ApplicationMessage {
      * @param {Number} timestamp 
      * @returns {ApplicationMessage}
      */
-    timestamp (timestamp) {
-        this.ts = timestamp;
+    time (timestamp) {
+        this.timestamp = timestamp;
 
         return this;
     }
@@ -36,6 +36,16 @@ class ApplicationMessage {
      */
     get () {
         return this.cmds.shift();
+    }
+
+    /**
+     * @returns {ApplicationMessage} this
+     */
+    clear () {
+        this.timestamp = undefined;
+        this.cmds = [];
+
+        return this;
     }
 }
 

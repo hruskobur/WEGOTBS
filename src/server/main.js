@@ -1,5 +1,5 @@
 /* imports ********************************************************************/
-import Http from 'http';
+import Http, { Server } from 'http';
 import { WebSocketServer, WebSocket } from "ws";
 import { v4 as uuidv4 } from 'uuid';
 import ApplicationCommand from '../shared/command.js';
@@ -20,10 +20,7 @@ class ServerWebSocket extends WebSocket {
     account;
 
     /** @type {Number} */
-    ts_in;
-
-    /** @type {Number} */
-    ts_out;
+    timestamp;
 
     /**
      * 
@@ -36,8 +33,7 @@ class ServerWebSocket extends WebSocket {
 
         this.id = '';
         this.account = '';
-        this.ts_in = -1;
-        this.ts_out = -1;
+        this.timestamp = -1;
 
         this.on('message', this.#on_message);
     }
@@ -53,14 +49,146 @@ class ServerWebSocket extends WebSocket {
     }
 
     /**
+     * 
+     * @param {*} reason 
+     * @returns {ServerWebSocket} this
+     */
+    kick = (reason) => {
+        const message = new ApplicationMessage()
+        .time(this.timestamp)
+        .add('kick', reason);
+
+        this.send(message);
+
+        this.close();
+    }
+
+    /**
+     * This is the received message handler, it processes data in following 
+     * steps: 
+     * - receives raw data
+     * - parses them into ApplicationMessage instance
+     * - checks for timestamp validity; kicks user if check fails
+     * - sends a command event to the application, if check succeeds
      * @private
      * @emits command
      * @param {*} data 
      */
     #on_message = (data) => {
-        data = Parser.deserialize(data);
+        const message = Parser.deserialize(
+            data
+        );
 
-        this.emit('command', this, data);
+        console.log('TIMESTAMP COMP', this.timestamp, message.timestamp);
+
+        // step 1: check timestamp validity 
+        // dev: not a solution, just a dev
+        if(this.timestamp !== message.timestamp) {
+            this.kick('timestamp');
+            
+            return;
+        }
+
+        this.emit('command', this, message);
+    }
+}
+
+class Simulation {
+    /**
+     * 
+     * @param {Set<WebSocketServer>} clients 
+     */
+    constructor (clients) {
+        this.clients = clients;
+        
+        this.dt = 5000;
+        this.timestamp = Date.now();
+
+        this.timer = null;
+    }
+
+    /**
+     * @param {Number} dt
+     * @returns {Simulation} this
+     */
+    start = (dt) => {
+        if(this.timer !== null) {
+            return this;
+        }
+
+        this.dt = dt;
+
+        this.timer = setInterval(
+            this.update, this.dt
+        );
+
+        return this;
+    }
+
+    /**
+     * @returns {Simulation} this
+     */
+    stop = () => {
+        if(this.timer === null) {
+            return this;
+        }
+
+        clearInterval(this.timer);
+        this.timer = null;
+
+        return this;
+    }
+
+    /**
+     * 
+     * @param {ServerWebSocket} io 
+     */
+    join = (io) => {
+        io.on('command', this.command);
+
+        console.log('simulation.join', io.account, io.id);
+    }
+
+    /**
+     * 
+     * @param {ServerWebSocket} io 
+     */
+    leave = (io) => {
+        io.removeAllListeners('command');
+
+        console.log('simulation.leave', io.account, io.id);
+    }
+
+    /**
+     * @returns {Simulation} this
+     */
+    update = () => {
+        this.timestamp = Date.now();
+
+        const snapshot = new ApplicationMessage()
+        .time(this.timestamp);
+
+        Array
+        .from(this.clients)
+        .forEach(client => {
+            client.timestamp = this.timestamp;
+            client.send(snapshot);
+        })
+
+        console.log('simulation.update', this.timestamp);
+
+        return this;
+    }
+
+    /**
+     * @param {ServerWebSocket} io 
+     * @param {ApplicationMessage} cmd 
+     * @returns {Simulation} this
+     */
+    command = (io, cmd) => {
+        // console.log('simulation.command', io.account, io.id, cmd);
+
+        return this;
     }
 }
 
@@ -110,80 +238,6 @@ function on_disconnect (io) {
 }
 
 /* app ************************************************************************/
-const dt = 1000;
-let timestamp = Date.now();
-
-/**
- * 
- * @param {ServerWebSocket} io 
- */
-function join (io) {
-    io.on('command', command);
-
-    console.log('app.join', io.account, io.id);
-}
-
-/**
- * 
- * @param {ServerWebSocket} io 
- */
-function leave (io) {
-    io.off('command', command);
-
-    console.log('app.leave', io.account, io.id);
-}
-
-/**
- * 
- * @param {ServerWebSocket} io 
- * @param {ApplicationMessage} cmd 
- */
-function command (io, cmd) {
-    console.log('app.command', io.account, io.id, cmd);
-}
-
-/**
- * 
- */
-function update () {
-    // step 1: update server's timestamp
-    timestamp = Date.now();
-
-    // step 2: create snapshot of server's data
-    const snapshot = new ApplicationMessage()
-    .timestamp(timestamp)
-    .add('move', {id: 0, x: 10, y: 10})
-    .add('attack', {id: 10, ability: 0, x: 10, y: 10})
-    .add('kill', {id: 1});
-
-    // step 3: send snapshot to every connected client
-    Array
-    .from(wss.clients)
-    .forEach(client => {
-        client.send(
-            snapshot
-        );
-    })
-
-    // dev: report
-    // const clients_report = clients
-    // .map(client => {
-    //     return {
-    //         account: client.account,
-    //         id: client.id,
-    //         ts_in: client.ts_in,
-    //         ts_out: client.ts_out
-    //     }
-    // });
-    
-    // const report = {
-    //     ts: timestamp,
-    //     clients: clients_report
-    // };
-
-    // console.log('app.update', report);
-}
-
-setInterval(update, dt);
-wss.addListener('join', join);
-wss.addListener('leave', leave);
+const simulation = new Simulation(wss.clients).start(5000);
+wss.addListener('join', simulation.join);
+wss.addListener('leave', simulation.leave);
