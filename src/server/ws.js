@@ -12,7 +12,7 @@ const InternalEvents = Object.freeze({
 
 class YarlWebSocket extends WebSocket {
     static Events = Object.freeze({
-        Message: 'app.message',
+        Action: 'app.action',
         Kicked: 'app.kicked'
     });
 
@@ -100,9 +100,17 @@ class YarlWebSocket extends WebSocket {
     #on_message = (data) => {
         const message = new Message().deserialize(data);
 
+        // check: client is allowed to send EXACTLY ONE action per message
+        if(message.length != 1) {
+            this.kick('fu');
+            return;
+        }
+
+        const action = message.shift();
+
         this.emit(
-            YarlWebSocket.Events.Message,
-            this, message
+            YarlWebSocket.Events.Action,
+            this, action
         );
     }
 }

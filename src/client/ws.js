@@ -1,6 +1,9 @@
 import Message from '../shared/message.js';
 
 class YarlWebSocket extends WebSocket {
+    static Events = Object.freeze({
+        Action: 'app.action',
+    })
     /**
      * 
      * @param {String|URL} url 
@@ -71,8 +74,21 @@ class YarlWebSocket extends WebSocket {
      */
     #on_message = (event) => {
         const message = new Message().deserialize(event.data);
+
+        while(message.length != 0) {
+            const action = message.shift();
+
+            window.dispatchEvent(
+                new CustomEvent(
+                    'yarl.action',
+                    {
+                        detail: {}
+                    }
+                )
+            );
+        }
         
-        console.log('client.recv', data);
+        console.log('client.recv', message);
     }
 
 }

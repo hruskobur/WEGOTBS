@@ -1,6 +1,7 @@
 import YarlLogger from './logger.js';
 import YarlWebSocket from './ws.js';
 import Message from '../shared/message.js';
+import Action from '../shared/action.js';
 
 class Simulation {
     /**
@@ -69,7 +70,14 @@ class Simulation {
      * @param {YarlWebSocket} ws 
      */
     join = (ws) => {
-        ws.on(YarlWebSocket.Events.Message, this.command);
+        // check: double account join
+        if(this.clients.has(ws.account) === true) {
+            ws.kick('fu');
+            return;
+        }
+
+        ws.on(YarlWebSocket.Events.Action, this.command);
+        this.clients.set(ws.account, ws);
 
         YarlLogger(
             'yarl.simulation',
@@ -80,10 +88,15 @@ class Simulation {
 
     /**
      * 
-     * @param {ServerWebSocket} ws 
+     * @param {YarlWebSocket} ws 
      */
     leave = (ws) => {
-        ws.removeAllListeners(YarlWebSocket.Events.Message);
+        if(this.clients.has(ws.account) === false) {
+            return;
+        }
+        
+        ws.removeAllListeners(YarlWebSocket.Events.Action);
+        this.clients.delete(ws.account);
 
         YarlLogger(
             'yarl.simulation',
@@ -118,11 +131,17 @@ class Simulation {
 
     /**
      * @param {ServerWebSocket} io 
-     * @param {Message} cmd 
+     * @param {Action} action
      * @returns {Simulation} this
      */
-    command = (io, cmd) => {
-        // console.log('simulation.command', io.account, io.id, cmd);
+    command = (io, action) => {
+        console.log('simulation.command', io.account, io.id, action);
+
+        YarlLogger(
+            'yarl.simulation',
+            'command',
+            io.account, action
+        );
 
         return this;
     }

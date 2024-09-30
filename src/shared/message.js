@@ -9,6 +9,10 @@ class Message {
         this.actions = [];
     }
 
+    get length () {
+        return this.actions.length
+    }
+
     /**
      * 
      * @param {Number} timestamp 
