@@ -1,4 +1,7 @@
-class ApplicationCommand {
+/**
+ * 
+ */
+class Action {
     /**
      * @type {String|Number}
      */
@@ -20,4 +23,4 @@ class ApplicationCommand {
     }
 }
 
-export default ApplicationCommand;
+export default Action;

@@ -1,15 +1,18 @@
-import Command from './command.js';
+import Action from './action.js';
 
-class ApplicationMessage {
+/**
+ * The unified server & client action container.
+ */
+class Message {
     constructor () {
-        this.timestamp = undefined;
-        this.cmds = [];
+        this.timestamp = -1;
+        this.actions = [];
     }
 
     /**
      * 
      * @param {Number} timestamp 
-     * @returns {ApplicationMessage}
+     * @returns {Message}
      */
     time (timestamp) {
         this.timestamp = timestamp;
@@ -21,32 +24,53 @@ class ApplicationMessage {
      * 
      * @param {String|Number} name 
      * @param {*} data 
-     * @returns {ApplicationMessage} this
+     * @returns {Message} this
      */
     add (name, data) {
-        this.cmds.push(
-            new Command(name, data)
+        this.actions.push(
+            new Action(name, data)
         );
 
         return this;
     }
 
     /**
-     * @returns {Command}
+     * Removes the first action from the array and returns it.
+     * @returns {Action}
      */
-    get () {
-        return this.cmds.shift();
+    shift () {
+        return this.actions.shift();
     }
 
     /**
-     * @returns {ApplicationMessage} this
+     * @returns {Message} this
      */
     clear () {
         this.timestamp = undefined;
-        this.cmds = [];
+        this.actions = [];
+
+        return this;
+    }
+    
+    /**
+     * @returns {String}
+     */
+    serialize = () => {
+        return JSON.stringify(this);
+    }
+
+    /**
+     * @param {String} data
+     * @returns {Message} this
+     */
+    deserialize = (data) => {
+        Object.assign(
+            this,
+            JSON.parse(data)
+        );
 
         return this;
     }
 }
 
-export default ApplicationMessage;
+export default Message;
