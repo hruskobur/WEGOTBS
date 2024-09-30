@@ -5,23 +5,11 @@ import Action from './action.js';
  */
 class Message {
     constructor () {
-        this.timestamp = -1;
         this.actions = [];
     }
 
     get length () {
         return this.actions.length
-    }
-
-    /**
-     * 
-     * @param {Number} timestamp 
-     * @returns {Message}
-     */
-    time (timestamp) {
-        this.timestamp = timestamp;
-
-        return this;
     }
 
     /**
@@ -50,7 +38,6 @@ class Message {
      * @returns {Message} this
      */
     clear () {
-        this.timestamp = undefined;
         this.actions = [];
 
         return this;

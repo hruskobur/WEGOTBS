@@ -76,6 +76,7 @@ class Simulation {
             return;
         }
 
+        ws.timestamp = this.timestamp;
         ws.on(YarlWebSocket.Events.Action, this.command);
         this.clients.set(ws.account, ws);
 
@@ -95,6 +96,7 @@ class Simulation {
             return;
         }
         
+        ws.timestamp = null;
         ws.removeAllListeners(YarlWebSocket.Events.Action);
         this.clients.delete(ws.account);
 
@@ -109,16 +111,23 @@ class Simulation {
      * @returns {Simulation} this
      */
     update = () => {
-        this.timestamp = Date.now();
+        const timestamp = Date.now();
 
         const snapshot = new Message()
-        .time(this.timestamp);
+        .add('ack', timestamp);
 
-        this.clients
-        .forEach(client => {
-            client.timestamp = this.timestamp;
+        this.clients.forEach(client => {
+            if(client.timestamp != this.timestamp) {
+                client.kick('error.timestamp');
+                
+                return;
+            }
+
+            client.timestamp = timestamp;
             client.send(snapshot);
         });
+
+        this.timestamp = timestamp;
 
         YarlLogger(
             'yarl.simulation',

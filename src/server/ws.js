@@ -45,7 +45,7 @@ class YarlWebSocket extends WebSocket {
 
         this.id = '';
         this.account = '';
-        this.timestamp = -1;
+        this.timestamp = null;
 
         this.on(InternalEvents.Message, this.#on_message);
     }
@@ -71,7 +71,6 @@ class YarlWebSocket extends WebSocket {
      */
     kick = (reason) => {
         const message = new Message()
-        .time(this.timestamp)
         .add('kick', reason);
         
         this.emit(
@@ -102,11 +101,16 @@ class YarlWebSocket extends WebSocket {
 
         // check: client is allowed to send EXACTLY ONE action per message
         if(message.length != 1) {
-            this.kick('fu');
+            this.kick('error.message.length');
             return;
         }
 
         const action = message.shift();
+        if(action.name == 'ack') {
+            this.timestamp = action.data;
+            
+            return;
+        }
 
         this.emit(
             YarlWebSocket.Events.Action,

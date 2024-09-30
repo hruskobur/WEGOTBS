@@ -18,6 +18,8 @@ class YarlWebSocket extends WebSocket {
         this.onclose = this.#on_close;
         this.onerror = this.#on_error;
         this.onmessage = this.#on_message;
+
+        this.debug = false;
     }
     
     /**
@@ -74,21 +76,35 @@ class YarlWebSocket extends WebSocket {
      */
     #on_message = (event) => {
         const message = new Message().deserialize(event.data);
-
+        
         while(message.length != 0) {
             const action = message.shift();
+            
+            console.log('client.recv', action);
 
+            if(action.name == 'ack') {
+                if(this.debug == false) {
+                    this.send(action.name, action.data);
+                } else {
+                    setTimeout(() => {
+                        this.send(action.name, action.data)
+                    }, 5500);
+                }
+                continue;
+            }
+
+            
             window.dispatchEvent(
                 new CustomEvent(
                     'yarl.action',
                     {
-                        detail: {}
+                        detail: action
                     }
                 )
             );
         }
         
-        console.log('client.recv', message);
+        
     }
 
 }
