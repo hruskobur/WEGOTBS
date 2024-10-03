@@ -30,6 +30,10 @@ class Simulation {
 
         this.time = new TimeModel(5000, 1000, 1000);
         this.timer = null;
+
+        // dev: will be part of the bg model
+        this.actors = new Set();
+        this.actions = [];
     }
 
     /**
@@ -40,10 +44,12 @@ class Simulation {
             return this;
         }
 
+        this.actors.clear();
         this.time.reset();
+
         this.timer = setInterval(this.#on_update, this.time.dt);
 
-        YarlLogger(this.id, 'start', this.time);
+        console.log(this.id, 'start', this.time);
 
         return this;
     }
@@ -65,7 +71,7 @@ class Simulation {
         });
         this.clients.clear();
 
-        YarlLogger(this.id, 'stop', this.time);
+        console.log(this.id, 'stop', this.time);
 
         return this;
     }
@@ -105,11 +111,11 @@ class Simulation {
             return;
         }
 
-        ws.timestamp = null;
+        ws.timestamp = this.time.timestamp;;
         ws.simulation = this;
         this.clients.set(ws.account, ws);
 
-        YarlLogger(this.id, 'join', ws.account);
+        console.log(this.id, 'join', ws.account);
     }
 
     /**
@@ -126,7 +132,7 @@ class Simulation {
         ws.simulation = null;
         this.clients.delete(ws.account);
 
-        YarlLogger(this.id, 'leave', ws.account);
+        console.log(this.id, 'leave', ws.account);
     }
 
     /**
@@ -135,7 +141,29 @@ class Simulation {
      * @returns {Simulation} this
      */
     command = (ws, action) => {
-        YarlLogger(this.id, 'command', ws.account, action);
+        // check: only one action per turn is allowed
+        if(this.actors.has(ws.account) === true) {
+            console.log('..... already acted', ws.account);
+
+            ws.close(1000, 'kick');
+            return;
+        }
+
+        // check: client can't send any actions in simulation phase
+        if(this.time.phase === TimeModel.Phase.Simulation) {
+            console.log('..... simulation in progress', ws.account);
+
+            ws.close(1000, 'kick');
+            return;
+        }
+
+        this.actors.add(ws.account);
+        this.actions.push(action);
+
+        console.log(
+            '..... updating simulation', 
+            ws.account, action, this.time.timestamp
+        );
         
         return this;
     }
@@ -145,7 +173,47 @@ class Simulation {
      * @returns {void}
      */
     #on_update = () => {
-        this.time.update();
+        const next = this.time.update();
+        
+        switch(next) {
+            case null: {
+                console.log('..... update', this.time);
+                break;
+            }
+
+            case TimeModel.Phase.Plan: {
+                this.actions = [];
+                this.actors.clear();
+                this.clients.forEach(client => {
+                    if(client.timestamp != this.time.timestamp) {
+                        console.log('not acked!')
+                        client.close(1000, 'kick');
+                        return;
+                    }
+
+                    client.timestamp = null;
+                });
+
+                this.time.timestamp = Date.now();
+
+                console.log('begin', this.time);
+                
+                break;
+            }
+            case TimeModel.Phase.Simulation: {
+                console.log('begin', this.time);
+
+                const message = new Message()
+                .add('ack', this.time.timestamp)
+                .add('update', this.actions);
+
+                this.clients.forEach(client => {
+                    client.send(message);
+                });
+
+                break;
+            }
+        }
 
         // YarlLogger(
         //     this.id, 'update', 

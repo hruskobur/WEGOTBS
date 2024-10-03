@@ -4,7 +4,6 @@ import { Socket } from 'net';
 import { v4 as uuidv4 } from 'uuid';
 import { WebSocketServer } from 'ws';
 
-import YarlLogger from './logger.js';
 import YarlWebSocket from './ws.js';
 
 /**
@@ -138,7 +137,7 @@ class YarlWebSocketServer extends EventEmitter {
      * @private
      */
     #on_http_listening = () => {
-        YarlLogger('http', InternalEvents.Http.Listening, this.http.address());
+        console.log('http', InternalEvents.Http.Listening, this.http.address());
     }
 
     /**
@@ -146,7 +145,7 @@ class YarlWebSocketServer extends EventEmitter {
      * @param {*} err
      */
     #on_http_error = (err) => {
-        YarlLogger('http', InternalEvents.Http.Error, err);
+        console.log('http', InternalEvents.Http.Error, err);
     }
 
     /**
@@ -156,7 +155,7 @@ class YarlWebSocketServer extends EventEmitter {
      * @param {Buffer} head 
      */
     #on_http_upgrade = (req, socket, head) => {
-        YarlLogger('http', InternalEvents.Http.Upgrade, req.headers);
+        console.log('http', InternalEvents.Http.Upgrade, req.headers);
 
         // note: we dont have a web socket connection established yet here
         // so this is the place to reject request, if something is wrong
@@ -185,7 +184,7 @@ class YarlWebSocketServer extends EventEmitter {
      * @private
      */
     #on_wss_close = () => {
-        YarlLogger('wss', InternalEvents.Wss.Close);
+        console.log('wss', InternalEvents.Wss.Close);
     }
 
     /**
@@ -193,7 +192,7 @@ class YarlWebSocketServer extends EventEmitter {
      * @param {Error} err
      */
     #on_wss_error = (err) => {
-        YarlLogger('wss', InternalEvents.Wss.Error, err);
+        console.log('wss', InternalEvents.Wss.Error, err);
     }
 
     /**
@@ -201,7 +200,7 @@ class YarlWebSocketServer extends EventEmitter {
      * @param {YarlWebSocket} ws 
      */
     #on_ws_connection = (ws) => {
-        YarlLogger('ws', InternalEvents.Wss.Connection, ws.account);
+        console.log('ws', InternalEvents.Wss.Connection, ws.account);
 
         this.clients.set(ws.account, ws);
         ws.on(InternalEvents.Ws.Close, this.#on_ws_close.bind(null, ws));
@@ -213,7 +212,7 @@ class YarlWebSocketServer extends EventEmitter {
      * @param {YarlWebSocket} ws 
      */
     #on_ws_close = (ws) => {
-        YarlLogger('ws', InternalEvents.Ws.Close, ws.account);
+        console.log('ws', InternalEvents.Ws.Close, ws.account);
 
         this.clients.delete(ws.account);
         this.emit(YarlWebSocketServer.Events.Leave, ws);

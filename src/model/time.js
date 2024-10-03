@@ -4,8 +4,7 @@ class TimeModel {
 
     static Phase = Object.freeze({
         Plan: 'phase.plan',
-        Simulation: 'phase.simulation',
-        Update: 'phase.update'
+        Simulation: 'phase.simulation'
     });
 
     /**
@@ -22,16 +21,6 @@ class TimeModel {
      * @type {Number}
      */
     #dt;
-
-    /**
-     * @type {Function}
-     */
-    #on_phase_begin
-
-    /**
-     * @type {Function}
-     */
-    #on_simulation_begin
 
     /**
      * How many rounds have passed?
@@ -62,19 +51,11 @@ class TimeModel {
      * @param {Number} time_plan how long should plan phase last
      * @param {Number} time_simulation how long should simulation phase last
      * @param {Number} time_delta how much time does pass between two updates
-     * @param {Function} on_phase_begin
-     * @param {Function} on_simulation_begin 
      */
-    constructor (
-        time_plan, time_simulation, time_delta,
-        on_simulation_begin, on_phase_begin
-    ) {
+    constructor (time_plan, time_simulation, time_delta) {
         this.#time_plan = time_plan;
         this.#time_simulation = time_simulation;
         this.#dt = time_delta;
-
-        this.#on_phase_begin = on_phase_begin;
-        this.#on_simulation_begin = on_simulation_begin;
 
         this.reset();
     }
@@ -91,7 +72,7 @@ class TimeModel {
     }
 
     /**
-     * @returns {TimeModel.Phase}
+     * @returns {TimeModel.Phase|null}
      */
     update = () => {
         // simluation (end of current turn)
@@ -106,16 +87,14 @@ class TimeModel {
         if(this.left === TimeModel.TimeEnd) {
             this.phase = TimeModel.Phase.Plan;
             this.left = this.#time_plan;
-
             this.round += 1;
-            this.timestamp = Date.now();
 
             return this.phase;
         }
 
         this.left -= this.#dt;
 
-        return this.phase
+        return null;
     }
 }
 

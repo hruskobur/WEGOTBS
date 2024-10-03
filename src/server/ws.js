@@ -61,6 +61,20 @@ class YarlWebSocket extends WebSocket {
     }
 
     /**
+     * Sends an acknowledgment message to the client. 
+     * Client should response to this message immediately.
+     * Upon receiving the response, the client's timestamp is updated.
+     * This is a special kind of message that is handled internally 
+     * and is not propagated further to the Simulation.
+     * @param {Number} timestamp 
+     */
+    acknowledge = (timestamp) => {
+        this.send(
+            new Message('ack', timestamp)
+        );
+    }
+
+    /**
      * This is the received message handler, it processes data in following 
      * steps: 
      * - receives raw data
@@ -72,8 +86,11 @@ class YarlWebSocket extends WebSocket {
      * @param {*} data 
      */
     #on_message = (data) => {
+        // check: client has to join simulation before sending any messages
         if(this.simulation == null) {
             this.close(1000, 'kick');
+
+            return;
         }
 
         const message = new Message().deserialize(data);
@@ -85,8 +102,18 @@ class YarlWebSocket extends WebSocket {
             return;
         }
 
-        const action = message.actions[0];
+        const action = message.shift();
 
+        // client has received an acknowledgement, update the timestamp
+        if(action.name === 'ack') {
+            this.timestamp = action.data;
+            
+            console.log('..... acked!', this.timestamp)
+
+            return;
+        }
+
+        // client has received an action, send this action to the simulation
         this.simulation.command(this, action)
     }
 }
