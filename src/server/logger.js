@@ -2,7 +2,8 @@ import Utils from 'util';
 
 const LogOptions = Object.freeze({
     depth: null,
-    compact: true
+    compact: true,
+    showHidden: false
 });
 
 /**
@@ -11,7 +12,7 @@ const LogOptions = Object.freeze({
  * @param {String} event 
  * @param {...any} payload 
  */
-function log (caller, event, ...payload) {
+function YarlLogger (caller, event, ...payload) {
     const timestamp = Date.now();
     payload = Utils.inspect(payload, LogOptions);
 
@@ -25,4 +26,4 @@ function log (caller, event, ...payload) {
     console.log(message);
 }
 
-export default log;
+export default YarlLogger;

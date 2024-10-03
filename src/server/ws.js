@@ -1,5 +1,6 @@
 import WebSocket from 'ws';
 import Message from '../shared/message.js';
+import Simulation from './simulation.js';
 
 const YarlWebSocketOptions = Object.freeze({
     binary: false,
@@ -11,19 +12,8 @@ const InternalEvents = Object.freeze({
 });
 
 class YarlWebSocket extends WebSocket {
-    static Events = Object.freeze({
-        Action: 'app.action',
-        Kicked: 'app.kicked'
-    });
-
-    /** 
-     * The ServerWebSocket's application-wide unique identifier.
-     * @type {String}
-     */
-    id;
-
     /**
-     * The account that has opened this ServerWebSocket instance.
+     * The account that has opened this YarlWebSocket instance.
      * @type {String} 
      */
     account;
@@ -35,6 +25,11 @@ class YarlWebSocket extends WebSocket {
     timestamp;
 
     /**
+     * @type {Simulation}
+     */
+    simulation
+
+    /**
      * 
      * @param {String|URL} address 
      * @param {String|Array<String>|undefined} protocols 
@@ -43,14 +38,15 @@ class YarlWebSocket extends WebSocket {
     constructor (address, protocols, options=null) {
         super(address, protocols, options);
 
-        this.id = '';
         this.account = '';
+        this.simulation = null;
         this.timestamp = null;
 
         this.on(InternalEvents.Message, this.#on_message);
     }
 
     /**
+     * @public
      * @override
      * @param {Message} message
      * @returns {YarlWebSocket} this
@@ -60,27 +56,6 @@ class YarlWebSocket extends WebSocket {
             message.serialize(),
             YarlWebSocketOptions
         );
-
-        return this;
-    }
-
-    /**
-     * 
-     * @param {*} reason 
-     * @returns {YarlWebSocket} this
-     */
-    kick = (reason) => {
-        const message = new Message()
-        .add('kick', reason);
-        
-        this.emit(
-            YarlWebSocket.Events.Kicked,
-            this, reason
-        )
-
-        this
-        .send(message)
-        .close();
 
         return this;
     }
@@ -97,25 +72,22 @@ class YarlWebSocket extends WebSocket {
      * @param {*} data 
      */
     #on_message = (data) => {
+        if(this.simulation == null) {
+            this.close(1000, 'kick');
+        }
+
         const message = new Message().deserialize(data);
 
         // check: client is allowed to send EXACTLY ONE action per message
         if(message.length != 1) {
-            this.kick('error.message.length');
-            return;
-        }
-
-        const action = message.shift();
-        if(action.name == 'ack') {
-            this.timestamp = action.data;
+            this.close(1000, 'kick');
             
             return;
         }
 
-        this.emit(
-            YarlWebSocket.Events.Action,
-            this, action
-        );
+        const action = message.actions[0];
+
+        this.simulation.command(this, action)
     }
 }
 

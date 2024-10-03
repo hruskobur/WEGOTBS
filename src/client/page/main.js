@@ -19,8 +19,6 @@ function create_button (id, txt, handler) {
 window.addEventListener(
     'load',
     e => {
-        
-
         create_button('connect', 'CONNECT', () => {
             if(ws !== null) {
                 throw new Error();
@@ -41,6 +39,8 @@ window.addEventListener(
             ws.disconnect();
             ws = null;
             window.ws = null;
+            
+            console.clear();
         });
 
         create_button('command-ok', 'COMMAND', () => {

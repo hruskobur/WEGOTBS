@@ -22,19 +22,19 @@ const InternalEvents = Object.freeze({
         Error: 'error'
     },
     Wss: {
+        Connection: 'connection',
         Close: 'close',
         Error: 'error'
     },
     Ws: {
-        Connection: 'connection',
         Close: 'close'
     }
 });
 
 class YarlWebSocketServer extends EventEmitter {
     static Events = Object.freeze({
-        AppJoin: 'app.join',
-        AppLeave: 'app.leave'
+        Join: 'join',
+        Leave: 'leave'
     });
 
     /**
@@ -53,6 +53,11 @@ class YarlWebSocketServer extends EventEmitter {
     wss;
 
     /**
+     * @type {Map<String, YarlWebSocket>}
+     */
+    clients;
+
+    /**
      * @param {YarlWebSocketServerOptions} cfg 
      */
     constructor (cfg) {
@@ -61,6 +66,8 @@ class YarlWebSocketServer extends EventEmitter {
         this.cfg = cfg;
         this.wss = null;
         this.http = null;
+
+        this.clients = new Map();
     }
 
     /**
@@ -77,6 +84,7 @@ class YarlWebSocketServer extends EventEmitter {
                 // note: functionality-critical fixed configuration
                 this.cfg.wss.noServer = true;
                 this.cfg.wss.WebSocket = YarlWebSocket;
+                this.cfg.wss.clientTracking = false;
 
                 this.http = Http.createServer(this.cfg.http)
                 .on(InternalEvents.Http.Listening, this.#on_http_listening)
@@ -86,7 +94,7 @@ class YarlWebSocketServer extends EventEmitter {
                 this.wss = new WebSocketServer(this.cfg.wss)
                 .on(InternalEvents.Wss.Close, this.#on_wss_close)
                 .on(InternalEvents.Wss.Error, this.#on_wss_error)
-                .on(InternalEvents.Ws.Connection, this.#on_ws_connection);
+                .on(InternalEvents.Wss.Connection, this.#on_ws_connection);
 
                 this.http.listen(
                     this.cfg.port, this.cfg.host,
@@ -130,11 +138,7 @@ class YarlWebSocketServer extends EventEmitter {
      * @private
      */
     #on_http_listening = () => {
-        YarlLogger(
-            'yarl.http',
-            InternalEvents.Http.Listening,
-            this.http.address()
-        );
+        YarlLogger('http', InternalEvents.Http.Listening, this.http.address());
     }
 
     /**
@@ -142,11 +146,7 @@ class YarlWebSocketServer extends EventEmitter {
      * @param {*} err
      */
     #on_http_error = (err) => {
-        YarlLogger(
-            'yarl.http',
-            InternalEvents.Http.Error,
-            err
-        );
+        YarlLogger('http', InternalEvents.Http.Error, err);
     }
 
     /**
@@ -156,11 +156,7 @@ class YarlWebSocketServer extends EventEmitter {
      * @param {Buffer} head 
      */
     #on_http_upgrade = (req, socket, head) => {
-        YarlLogger(
-            'yarl.http',
-            InternalEvents.Http.Upgrade,
-            req.headers
-        );
+        YarlLogger('http', InternalEvents.Http.Upgrade, req.headers);
 
         // note: we dont have a web socket connection established yet here
         // so this is the place to reject request, if something is wrong
@@ -180,26 +176,16 @@ class YarlWebSocketServer extends EventEmitter {
      * @param {Http.IncomingMessage} req 
      */
     #on_http_upgrade_handler = (ws, req) => {
-        ws.account = (Math.random() + 1).toString(36).substring(2);
-        ws.id = uuidv4();
+        ws.account = uuidv4();
 
-        this.wss.emit(
-            InternalEvents.Ws.Connection,
-            ws
-            // note: this is the place to add custom data to 
-            // the ws connection event
-            // . . .
-        )
+        this.wss.emit(InternalEvents.Wss.Connection, ws/*, aditional data */);
     }
 
     /**
      * @private
      */
     #on_wss_close = () => {
-        YarlLogger(
-            'yarl.wss',
-            InternalEvents.Wss.Close
-        );
+        YarlLogger('wss', InternalEvents.Wss.Close);
     }
 
     /**
@@ -207,11 +193,7 @@ class YarlWebSocketServer extends EventEmitter {
      * @param {Error} err
      */
     #on_wss_error = (err) => {
-        YarlLogger(
-            'yarl.wss',
-            InternalEvents.Wss.Error,
-            err
-        );
+        YarlLogger('wss', InternalEvents.Wss.Error, err);
     }
 
     /**
@@ -219,21 +201,11 @@ class YarlWebSocketServer extends EventEmitter {
      * @param {YarlWebSocket} ws 
      */
     #on_ws_connection = (ws) => {
-        YarlLogger(
-            'yarl.ws',
-            InternalEvents.Wss.Connection,
-            ws.account, ws.id
-        );
+        YarlLogger('ws', InternalEvents.Wss.Connection, ws.account);
 
-        ws.on(
-            InternalEvents.Ws.Close,
-            this.#on_ws_close.bind(null, ws)
-        );
-
-        this.emit(
-            YarlWebSocketServer.Events.AppJoin,
-            ws
-        );
+        this.clients.set(ws.account, ws);
+        ws.on(InternalEvents.Ws.Close, this.#on_ws_close.bind(null, ws));
+        this.emit(YarlWebSocketServer.Events.Join, ws);
     }
 
     /**
@@ -241,16 +213,10 @@ class YarlWebSocketServer extends EventEmitter {
      * @param {YarlWebSocket} ws 
      */
     #on_ws_close = (ws) => {
-        YarlLogger(
-            'yarl.ws',
-            InternalEvents.Ws.Close,
-            ws.account, ws.id
-        );
+        YarlLogger('ws', InternalEvents.Ws.Close, ws.account);
 
-        this.emit(
-            YarlWebSocketServer.Events.AppLeave,
-            ws
-        );
+        this.clients.delete(ws.account);
+        this.emit(YarlWebSocketServer.Events.Leave, ws);
     }
 }
 

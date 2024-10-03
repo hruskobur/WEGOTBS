@@ -1,46 +1,49 @@
 import YarlLogger from './logger.js';
 import YarlWebSocket from './ws.js';
+import TimeModel from '../model/time.js';
 import Message from '../shared/message.js';
 import Action from '../shared/action.js';
 
 class Simulation {
+    /**
+     * @type {String}
+     */
+    id;
+
     /**
      * @type {Map<String, YarlWebSocket>}
      */
     clients;
 
     /**
+     * @type {TimeModel}
      */
-    constructor () {
+    time;
+
+    /**
+     * 
+     * @param {String} id 
+     */
+    constructor (id) {
+        this.id = id;
         this.clients = new Map();
 
-        this.dt = 5000;
-        this.timestamp = Date.now();
-
+        this.time = new TimeModel(5000, 1000, 1000);
         this.timer = null;
     }
 
     /**
-     * @param {number} dt defaults to  5000ms.
      * @returns {Simulation} this
      */
-    start = (dt = 5000) => {
+    start = () => {
         if(this.timer !== null) {
             return this;
         }
 
-        this.dt = dt;
-        this.timestamp = Date.now();
+        this.time.reset();
+        this.timer = setInterval(this.#on_update, this.time.dt);
 
-        this.timer = setInterval(
-            this.update, this.dt
-        );
-
-        YarlLogger(
-            'yarl.simulation',
-            'start',
-            dt
-        );
+        YarlLogger(this.id, 'start', this.time);
 
         return this;
     }
@@ -56,11 +59,13 @@ class Simulation {
         clearInterval(this.timer);
         this.timer = null;
 
-        YarlLogger(
-            'yarl.simulation',
-            'stop',
-            dt
-        );
+        this.clients.forEach(client => {
+            client.removeAllListeners();
+            client.close(1000, 'kick')
+        });
+        this.clients.clear();
+
+        YarlLogger(this.id, 'stop', this.time);
 
         return this;
     }
@@ -70,21 +75,41 @@ class Simulation {
      * @param {YarlWebSocket} ws 
      */
     join = (ws) => {
-        // check: double account join
-        if(this.clients.has(ws.account) === true) {
-            ws.kick('fu');
+        // check: has simulation started?
+        if(this.time == null) {
+            ws.close(1000, 'kick');
+            
             return;
         }
 
-        ws.timestamp = this.timestamp;
-        ws.on(YarlWebSocket.Events.Action, this.command);
+        // check: limit
+        // todo: check the count against the model, not clients here
+        // . . .
+        if(this.clients.size >= 10) {
+            ws.close(1000, 'kick');
+
+            return;
+        }
+
+        // check: one simulation per client
+        if(ws.simulation !== null) {
+            ws.close(1000, 'kick');
+
+            return;
+        }
+
+        // check: one client per simulation
+        if(this.clients.has(ws.account) === true) {
+            ws.close(1000, 'kick');
+            
+            return;
+        }
+
+        ws.timestamp = null;
+        ws.simulation = this;
         this.clients.set(ws.account, ws);
 
-        YarlLogger(
-            'yarl.simulation',
-            'join',
-            ws.account, ws.id
-        );
+        YarlLogger(this.id, 'join', ws.account);
     }
 
     /**
@@ -92,67 +117,40 @@ class Simulation {
      * @param {YarlWebSocket} ws 
      */
     leave = (ws) => {
+        // check: does this client belong here?
         if(this.clients.has(ws.account) === false) {
             return;
         }
         
         ws.timestamp = null;
-        ws.removeAllListeners(YarlWebSocket.Events.Action);
+        ws.simulation = null;
         this.clients.delete(ws.account);
 
-        YarlLogger(
-            'yarl.simulation',
-            'leave',
-            ws.account, ws.id
-        );
+        YarlLogger(this.id, 'leave', ws.account);
     }
 
     /**
-     * @returns {Simulation} this
-     */
-    update = () => {
-        const timestamp = Date.now();
-
-        const snapshot = new Message()
-        .add('ack', timestamp);
-
-        this.clients.forEach(client => {
-            if(client.timestamp != this.timestamp) {
-                client.kick('error.timestamp');
-                
-                return;
-            }
-
-            client.timestamp = timestamp;
-            client.send(snapshot);
-        });
-
-        this.timestamp = timestamp;
-
-        YarlLogger(
-            'yarl.simulation',
-            'update',
-            this.timestamp
-        );
-
-        return this;
-    }
-
-    /**
-     * @param {ServerWebSocket} io 
+     * @param {YarlWebSocket} ws 
      * @param {Action} action
      * @returns {Simulation} this
      */
-    command = (io, action) => {
-        console.log('simulation.command', io.account, io.id, action);
-
-        YarlLogger(
-            'yarl.simulation',
-            'command',
-            io.account, action
-        );
-
+    command = (ws, action) => {
+        YarlLogger(this.id, 'command', ws.account, action);
+        
         return this;
+    }
+    
+    /**
+     * @private
+     * @returns {void}
+     */
+    #on_update = () => {
+        this.time.update();
+
+        // YarlLogger(
+        //     this.id, 'update', 
+        //     this.time.round, this.time.phase, this.time.left
+        // );
     }
 }
 
