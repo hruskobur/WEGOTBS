@@ -4,6 +4,11 @@ import Action from './action.js';
  * The unified server & client action container.
  */
 class Message {
+    /**
+     * @type {Array<Action>}
+     */
+    actions;
+    
     constructor () {
         this.actions = [];
     }

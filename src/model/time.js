@@ -1,26 +1,26 @@
-
 class TimeModel {
     static TimeEnd = 0;
 
     static Phase = Object.freeze({
         Plan: 'phase.plan',
+        Update: 'phase.update',
         Simulation: 'phase.simulation'
     });
 
     /**
      * @type {Number}
      */
-    #time_plan;
+    #round_time;
 
     /**
      * @type {Number}
      */
-    #time_simulation;
+    #sim_time;
 
     /**
      * @type {Number}
      */
-    #dt;
+    #delta_time;
 
     /**
      * How many rounds have passed?
@@ -48,53 +48,44 @@ class TimeModel {
 
     /**
      * 
-     * @param {Number} time_plan how long should plan phase last
-     * @param {Number} time_simulation how long should simulation phase last
-     * @param {Number} time_delta how much time does pass between two updates
+     * @param {Number} round_time 
+     * @param {Number} sim_time 
      */
-    constructor (time_plan, time_simulation, time_delta) {
-        this.#time_plan = time_plan;
-        this.#time_simulation = time_simulation;
-        this.#dt = time_delta;
+    constructor (round_time, sim_time) {
+        this.#round_time = round_time;
+        this.#sim_time = sim_time;
+        this.#delta_time = 1000;
 
-        this.reset();
-    }
+        this.phase = TimeModel.Phase.Plan;
+        this.left = this.#round_time;
 
-    get dt () {
-        return this.#dt;
-    }
-
-    reset = () => {
-        this.round = 0;
-        this.phase = TimeModel.Phase.Simulation;
-        this.left = this.#time_simulation;
         this.timestamp = Date.now();
+        this.round = 0;
+    }
+
+    get delta_time () {
+        return this.#delta_time;
     }
 
     /**
-     * @returns {TimeModel.Phase|null}
+     * @returns {TimeModel.Phase}
      */
     update = () => {
-        // simluation (end of current turn)
-        if(this.left === this.#time_simulation) {
-            this.phase = TimeModel.Phase.Simulation;
-            this.left -= this.#dt;
-
-            return this.phase;
-        }
-
-        // plan (begining of new turn)
-        if(this.left === TimeModel.TimeEnd) {
+        if(this.left === this.#round_time) {
             this.phase = TimeModel.Phase.Plan;
-            this.left = this.#time_plan;
-            this.round += 1;
+            this.left -= this.#delta_time;
 
-            return this.phase;
+            this.timestamp = Date.now();
+            this.round += 1;
+        } else if(this.left === this.#sim_time) {
+            this.phase = TimeModel.Phase.Simulation;
+            this.left = this.#round_time;
+        } else {
+            this.phase = TimeModel.Phase.Update;
+            this.left -= this.#delta_time;
         }
 
-        this.left -= this.#dt;
-
-        return null;
+        return this.phase;
     }
 }
 

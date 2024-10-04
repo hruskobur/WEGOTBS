@@ -9,5 +9,31 @@
     <script type="module" src='main.js'></script>
 </head>
 <body>
+    <div class="debug-category">
+        <p>connect</p>
+        <button id="debug-connect">connect</button>
+    </div>
+    <div class="debug-category">
+        <p>disconnect</p>
+        <button id="debug-disconnect">disconnect</button>
+    </div>
+    <div class="debug-category">
+        <p>toggle debug</p>
+        <input id="debug-toggle" type="checkbox">
+    </div>
+    <div class="debug-category">
+        <p>send delay</p>
+        <input id="debug-send-delay" type="number" value="0">
+    </div>
+    <div class="debug-category">
+        <p>recv delay</p>
+        <input id="debug-recv-delay" type="number" value="0">
+    </div>
+    <div class="debug-category">
+        <p>send</p>
+        <input id="debug-send-name" type="text" value="cmd">
+        <input id="debug-send-data" type="text" value="{}">
+        <button id="debug-send">send</button>
+    </div>
 </body>
 </html>

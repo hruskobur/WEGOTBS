@@ -1,8 +1,9 @@
-import YarlLogger from './logger.js';
 import YarlWebSocket from './ws.js';
 import TimeModel from '../model/time.js';
 import Message from '../shared/message.js';
 import Action from '../shared/action.js';
+import BattlegroundModel from '../model/battleground.js';
+import ScenarioModel from '../model/scenario.js';
 
 class Simulation {
     /**
@@ -16,9 +17,14 @@ class Simulation {
     clients;
 
     /**
-     * @type {TimeModel}
+     * @type {Number}
      */
-    time;
+    timer;
+
+    /**
+     * @type {BattlegroundModel}
+     */
+    bg;
 
     /**
      * 
@@ -27,13 +33,15 @@ class Simulation {
     constructor (id) {
         this.id = id;
         this.clients = new Map();
-
-        this.time = new TimeModel(5000, 1000, 1000);
         this.timer = null;
 
-        // dev: will be part of the bg model
-        this.actors = new Set();
-        this.actions = [];
+        const scenario = new ScenarioModel(
+            10,
+            6000, 1000,
+            10, 10
+        )
+
+        this.bg = new BattlegroundModel(scenario);
     }
 
     /**
@@ -44,12 +52,11 @@ class Simulation {
             return this;
         }
 
-        this.actors.clear();
-        this.time.reset();
+        this.timer = setInterval(this.#on_update, this.bg.time.delta_time);
 
-        this.timer = setInterval(this.#on_update, this.time.dt);
-
-        console.log(this.id, 'start', this.time);
+        // todo: notify joined users that simulation has started
+        // . . .
+        console.log(this.id, 'start');
 
         return this;
     }
@@ -65,13 +72,15 @@ class Simulation {
         clearInterval(this.timer);
         this.timer = null;
 
+        // notify joined users that simulation has ended
+        // todo: will be a part of the API
         this.clients.forEach(client => {
             client.removeAllListeners();
-            client.close(1000, 'kick')
+            client.close(1000, 'kick');
         });
         this.clients.clear();
 
-        console.log(this.id, 'stop', this.time);
+        console.log(this.id, 'stop');
 
         return this;
     }
@@ -81,17 +90,8 @@ class Simulation {
      * @param {YarlWebSocket} ws 
      */
     join = (ws) => {
-        // check: has simulation started?
-        if(this.time == null) {
-            ws.close(1000, 'kick');
-            
-            return;
-        }
-
-        // check: limit
-        // todo: check the count against the model, not clients here
-        // . . .
-        if(this.clients.size >= 10) {
+        // check: simulation limit
+        if(this.clients.size >= this.bg.size) {
             ws.close(1000, 'kick');
 
             return;
@@ -111,7 +111,7 @@ class Simulation {
             return;
         }
 
-        ws.timestamp = this.time.timestamp;;
+        ws.timestamp = this.bg.time.timestamp;;
         ws.simulation = this;
         this.clients.set(ws.account, ws);
 
@@ -131,6 +131,7 @@ class Simulation {
         ws.timestamp = null;
         ws.simulation = null;
         this.clients.delete(ws.account);
+        this.bg.actions_queue.delete(ws.account);
 
         console.log(this.id, 'leave', ws.account);
     }
@@ -141,30 +142,39 @@ class Simulation {
      * @returns {Simulation} this
      */
     command = (ws, action) => {
-        // check: only one action per turn is allowed
-        if(this.actors.has(ws.account) === true) {
-            console.log('..... already acted', ws.account);
+        if(this.clients.has(ws.account) === false) {
+            console.log('..... account does not belong here', ws.account);
 
-            ws.close(1000, 'kick');
             return;
         }
 
-        // check: client can't send any actions in simulation phase
-        if(this.time.phase === TimeModel.Phase.Simulation) {
-            console.log('..... simulation in progress', ws.account);
+        if(this.bg.time.phase === TimeModel.Phase.Simulation) {
+            console.log('..... account cannot act now', ws.account);
 
-            ws.close(1000, 'kick');
+            const message = new Message()
+            .add('ack', false)
+            ws.send(message);
+
             return;
         }
 
-        this.actors.add(ws.account);
-        this.actions.push(action);
-
-        console.log(
-            '..... updating simulation', 
-            ws.account, action, this.time.timestamp
-        );
+        const cmd_queue = this.bg.actions_queue;
         
+        // check: one action per round
+        if(cmd_queue.has(ws.account) === true) {
+            console.log('..... account has already acted', ws.account);
+
+            return this;
+        }
+
+        cmd_queue.set(ws.account, action);
+        console.log('..... account has acted', ws.account, action);
+
+        // this account has acted; send ack 
+        const message = new Message()
+        .add('ack', true)
+        ws.send(message);
+
         return this;
     }
     
@@ -173,52 +183,38 @@ class Simulation {
      * @returns {void}
      */
     #on_update = () => {
-        const next = this.time.update();
+        const phase = this.bg.time.update();
+
+        const message = new Message()
+        .add('phase', phase);
         
-        switch(next) {
-            case null: {
-                console.log('..... update', this.time);
-                break;
-            }
-
+        // dev
+        switch(phase) {
             case TimeModel.Phase.Plan: {
-                this.actions = [];
-                this.actors.clear();
-                this.clients.forEach(client => {
-                    if(client.timestamp != this.time.timestamp) {
-                        console.log('not acked!')
-                        client.close(1000, 'kick');
-                        return;
-                    }
-
-                    client.timestamp = null;
-                });
-
-                this.time.timestamp = Date.now();
-
-                console.log('begin', this.time);
+                console.log('..... sending: BEGIN PLAN');
                 
                 break;
             }
             case TimeModel.Phase.Simulation: {
-                console.log('begin', this.time);
+                console.log('..... sending: BEGIN SIMULATION');
 
-                const message = new Message()
-                .add('ack', this.time.timestamp)
-                .add('update', this.actions);
+                this.bg.actions_queue.clear();
 
-                this.clients.forEach(client => {
-                    client.send(message);
-                });
-
+                message.add('sim', {});
+                
+                break;
+            }
+            case TimeModel.Phase.Update:
+            default: {
+                console.log('..... sending: UPDATE');
+                
                 break;
             }
         }
 
-        // YarlLogger(
-        //     this.id, 'update', 
-        //     this.time.round, this.time.phase, this.time.left
-        // );
+        this.clients.forEach(client => {
+            client.send(message);
+        });
     }
 }
 

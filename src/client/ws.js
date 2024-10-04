@@ -20,6 +20,8 @@ class YarlWebSocket extends WebSocket {
         this.onmessage = this.#on_message;
 
         this.debug = false;
+        this.send_delay = 0;
+        this.recv_delay = 0;
     }
     
     /**
@@ -32,8 +34,12 @@ class YarlWebSocket extends WebSocket {
         const message = new Message()
         .add(name, data);
 
-        super.send(
-            message.serialize()
+        // note: development version - setTimeout will be removed
+        setTimeout(
+            () => {
+                super.send(message.serialize());
+            },
+            this.send_delay
         );
 
         return this;
@@ -75,36 +81,20 @@ class YarlWebSocket extends WebSocket {
      * @param {MessageEvent} event 
      */
     #on_message = (event) => {
-        const message = new Message().deserialize(event.data);
-        
-        while(message.length != 0) {
-            const action = message.shift();
-            
-            console.log('client.recv', action);
+        setTimeout(
+            () => {
+                const message = new Message().deserialize(event.data);
 
-            if(action.name == 'ack') {
-                if(this.debug == false) {
-                    this.send(action.name, action.data);
-                } else {
-                    setTimeout(() => {
-                        this.send(action.name, action.data)
-                    }, 5500);
+                while(message.length != 0) {
+                    const action = message.shift();
+                    
+                    window.dispatchEvent(
+                        new CustomEvent('yarl.command', { detail: action })
+                    );
                 }
-                continue;
-            }
-
-            
-            window.dispatchEvent(
-                new CustomEvent(
-                    'yarl.action',
-                    {
-                        detail: action
-                    }
-                )
-            );
-        }
-        
-        
+            },
+            this.recv_delay
+        );
     }
 
 }
