@@ -87,6 +87,12 @@ class YarlWebSocket extends WebSocket {
 
                 while(message.length != 0) {
                     const action = message.shift();
+
+                    if(action.name === 'ack') {
+                        this.send(action.name, action.data);
+                        
+                        continue;
+                    }
                     
                     window.dispatchEvent(
                         new CustomEvent('yarl.command', { detail: action })

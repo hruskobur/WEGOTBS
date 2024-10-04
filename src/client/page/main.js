@@ -20,6 +20,7 @@ function on_connect () {
         []
     );
 
+    document.querySelector('#debug-toggle').checked = false;
     window.addEventListener('yarl.command', on_command);
 
     console.log('connect');

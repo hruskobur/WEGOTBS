@@ -8,7 +8,7 @@ class Message {
      * @type {Array<Action>}
      */
     actions;
-    
+
     constructor () {
         this.actions = [];
     }

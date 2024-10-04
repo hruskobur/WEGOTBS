@@ -143,32 +143,36 @@ class Simulation {
      */
     command = (ws, action) => {
         if(this.clients.has(ws.account) === false) {
-            console.log('..... account does not belong here', ws.account);
+            ws.close(1000, 'wrong room');
 
-            return;
+            console.log('[KICK] account does not belong here', ws.account);
+
+            return this;
         }
 
         if(this.bg.time.phase === TimeModel.Phase.Simulation) {
-            console.log('..... account cannot act now', ws.account);
+            console.log('[MISS] account sent command too late', ws.account);
 
             const message = new Message()
-            .add('ack', false)
+            .add('plan', false)
             ws.send(message);
 
-            return;
+            return this;
         }
 
         const cmd_queue = this.bg.actions_queue;
         
         // check: one action per round
         if(cmd_queue.has(ws.account) === true) {
-            console.log('..... account has already acted', ws.account);
+            ws.close(1000, 'already acted');
+
+            console.log('[KICK] account has already acted', ws.account);
 
             return this;
         }
 
         cmd_queue.set(ws.account, action);
-        console.log('..... account has acted', ws.account, action);
+        console.log('[ACT] account has acted', ws.account, action);
 
         // this account has acted; send ack 
         const message = new Message()
@@ -183,6 +187,7 @@ class Simulation {
      * @returns {void}
      */
     #on_update = () => {
+        const timestamp = this.bg.time.timestamp;
         const phase = this.bg.time.update();
 
         const message = new Message()
@@ -191,30 +196,47 @@ class Simulation {
         // dev
         switch(phase) {
             case TimeModel.Phase.Plan: {
-                console.log('..... sending: BEGIN PLAN');
+                console.log('[TIME] BEGIN PLAN');
                 
-                break;
+                this.clients.forEach(client => {
+                    if(client.timestamp !== timestamp) {
+                        client.close(1000, 'too slow');
+                        
+                        console.log('[KICK] account is too slow');
+
+                        return;
+                    }
+
+                    client.send(message);
+                });
+
+                return;
             }
             case TimeModel.Phase.Simulation: {
-                console.log('..... sending: BEGIN SIMULATION');
+                console.log('[TIME] BEGIN SIMULATION');
 
-                this.bg.actions_queue.clear();
-
+                message.add('ack', this.bg.time.timestamp);
                 message.add('sim', {});
                 
-                break;
+                this.clients.forEach(client => {
+                    client.send(message);
+                });
+                
+                this.bg.actions_queue.clear();
+                
+                return;
             }
             case TimeModel.Phase.Update:
             default: {
-                console.log('..... sending: UPDATE');
+                console.log('[TIME] UPDATE');
+
+                this.clients.forEach(client => {
+                    client.send(message);
+                });
                 
-                break;
+                return;
             }
         }
-
-        this.clients.forEach(client => {
-            client.send(message);
-        });
     }
 }
 

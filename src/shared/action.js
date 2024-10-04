@@ -15,9 +15,9 @@ class Action {
     /**
      * 
      * @param {String|Number} name 
-     * @param {*} data 
+     * @param {*} data [default=undefined]
      */
-    constructor (name, data) {
+    constructor (name, data=undefined) {
         this.name = name;
         this.data = data
     }

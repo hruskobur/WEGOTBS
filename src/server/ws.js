@@ -45,6 +45,10 @@ class YarlWebSocket extends WebSocket {
         this.on(InternalEvents.Message, this.#on_message);
     }
 
+    acknowledge = (timestamp) => {
+        
+    }
+
     /**
      * @public
      * @override
@@ -89,6 +93,12 @@ class YarlWebSocket extends WebSocket {
         }
 
         const action = message.actions[0];
+
+        if(action.name === 'ack') {
+            this.timestamp = action.data;
+            
+            return;
+        }
 
         // client has received an action, send this action to the simulation
         this.simulation.command(this, action)
