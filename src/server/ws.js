@@ -1,6 +1,5 @@
 import WebSocket from 'ws';
 import Message from '../shared/message.js';
-import Simulation from './simulation.js';
 
 const YarlWebSocketOptions = Object.freeze({
     binary: false,
@@ -25,11 +24,6 @@ class YarlWebSocket extends WebSocket {
     timestamp;
 
     /**
-     * @type {Simulation}
-     */
-    simulation
-
-    /**
      * 
      * @param {String|URL} address 
      * @param {String|Array<String>|undefined} protocols 
@@ -43,10 +37,6 @@ class YarlWebSocket extends WebSocket {
         this.timestamp = null;
 
         this.on(InternalEvents.Message, this.#on_message);
-    }
-
-    acknowledge = (timestamp) => {
-        
     }
 
     /**

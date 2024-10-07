@@ -1,6 +1,6 @@
 import EventEmitter from 'events';
-import Http from 'http';
-import { Socket } from 'net';
+import Http from 'node:http';
+import { Socket } from 'node:net';
 import { v4 as uuidv4 } from 'uuid';
 import { WebSocketServer } from 'ws';
 
@@ -18,6 +18,7 @@ const InternalEvents = Object.freeze({
     Http: {
         Listening: 'listening',
         Upgrade: 'upgrade',
+        Close: 'close',
         Error: 'error'
     },
     Wss: {
@@ -88,6 +89,7 @@ class YarlWebSocketServer extends EventEmitter {
                 this.http = Http.createServer(this.cfg.http)
                 .on(InternalEvents.Http.Listening, this.#on_http_listening)
                 .on(InternalEvents.Http.Upgrade, this.#on_http_upgrade)
+                .on(InternalEvents.Http.Close, this.#on_http_close)
                 .on(InternalEvents.Http.Error, this.#on_http_error);
 
                 this.wss = new WebSocketServer(this.cfg.wss)
@@ -115,20 +117,16 @@ class YarlWebSocketServer extends EventEmitter {
                     return reject();
                 }
 
-                this.http.close(
-                    (err) => {
-                        if(err) {
-                            console.error(err);
-                        }
+                this.wss.close();
+                this.http.close();
 
-                        this.http.closeAllConnections();
+                this.http.closeAllConnections();
+                this.clients.forEach(client => client.terminate());
 
-                        this.http = null;
-                        this.wss = null;
+                this.wss = null;
+                this.http = null;
 
-                        return resolve(this);
-                    }
-                );
+                return resolve();
             }
         );
     }
@@ -146,6 +144,14 @@ class YarlWebSocketServer extends EventEmitter {
      */
     #on_http_error = (err) => {
         console.log('http', InternalEvents.Http.Error, err);
+    }
+
+    /**
+     * @private
+     * @param {*} err
+     */
+    #on_http_close = (err) => {
+        console.log('http', InternalEvents.Http.Close, err);
     }
 
     /**
@@ -183,8 +189,8 @@ class YarlWebSocketServer extends EventEmitter {
     /**
      * @private
      */
-    #on_wss_close = () => {
-        console.log('wss', InternalEvents.Wss.Close);
+    #on_wss_close = (err) => {
+        console.log('wss', InternalEvents.Wss.Close, err);
     }
 
     /**

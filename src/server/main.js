@@ -1,9 +1,7 @@
 /* imports ********************************************************************/
 import YarlWebSocketServer from './wss.js';
-import Simulation from './simulation.js';
 
 /* app ************************************************************************/
-const simulation = new Simulation('dev.sim.0');
 
 const server = new YarlWebSocketServer(
     {
@@ -15,8 +13,13 @@ const server = new YarlWebSocketServer(
         port: 11000
     }
 )
-.on(YarlWebSocketServer.Events.Join, simulation.join)
-.on(YarlWebSocketServer.Events.Leave, simulation.leave);
+// .on(YarlWebSocketServer.Events.Join, simulation.join)
+// .on(YarlWebSocketServer.Events.Leave, simulation.leave);
 
-simulation.start();
+// simulation.start();
 await server.start();
+
+setTimeout(async () => {
+    console.log('stopped');
+    await server.stop();
+}, 5000);

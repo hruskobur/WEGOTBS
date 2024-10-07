@@ -19,7 +19,7 @@ class Action {
      */
     constructor (name, data=undefined) {
         this.name = name;
-        this.data = data
+        this.data = data;
     }
 }
 
