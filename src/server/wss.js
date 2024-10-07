@@ -1,5 +1,5 @@
-import EventEmitter from 'events';
-import Http from 'node:http';
+import EventEmitter from 'node:events';
+import * as Http from 'node:http';
 import { Socket } from 'node:net';
 import { v4 as uuidv4 } from 'uuid';
 import { WebSocketServer } from 'ws';
@@ -169,6 +169,9 @@ class YarlWebSocketServer extends EventEmitter {
         // todo: check protocols
         // todo: check token
 
+        // todo: if fails, do this
+        // this.#on_auth_fail(socket);
+
         this.wss.handleUpgrade(
             req, socket, head,
             this.#on_http_upgrade_handler
@@ -222,6 +225,15 @@ class YarlWebSocketServer extends EventEmitter {
 
         this.clients.delete(ws.account);
         this.emit(YarlWebSocketServer.Events.Leave, ws);
+    }
+
+    /**
+     * 
+     * @param {Socket} socket 
+     */
+    #on_auth_fail = (socket) => {
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+        socket.destroy();
     }
 }
 
