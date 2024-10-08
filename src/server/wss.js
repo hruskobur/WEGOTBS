@@ -34,7 +34,8 @@ const InternalEvents = Object.freeze({
 class YarlWebSocketServer extends EventEmitter {
     static Events = Object.freeze({
         Join: 'join',
-        Leave: 'leave'
+        Leave: 'leave',
+        Shutdown: 'shutdown'
     });
 
     /**
@@ -63,7 +64,12 @@ class YarlWebSocketServer extends EventEmitter {
     constructor (cfg) {
         super();
 
+        // note: functionality-critical fixed configuration
         this.cfg = cfg;
+        this.cfg.wss.noServer = true;
+        this.cfg.wss.WebSocket = YarlWebSocket;
+        this.cfg.wss.clientTracking = false;
+
         this.wss = null;
         this.http = null;
 
@@ -80,11 +86,6 @@ class YarlWebSocketServer extends EventEmitter {
                 if(this.http != null || this.wss != null) {
                     return reject();
                 }
-
-                // note: functionality-critical fixed configuration
-                this.cfg.wss.noServer = true;
-                this.cfg.wss.WebSocket = YarlWebSocket;
-                this.cfg.wss.clientTracking = false;
 
                 this.http = Http.createServer(this.cfg.http)
                 .on(InternalEvents.Http.Listening, this.#on_http_listening)
@@ -108,7 +109,7 @@ class YarlWebSocketServer extends EventEmitter {
     }
 
     /**
-     * @returns {YarlWebSocketServer}
+     * @returns {Promise<YarlWebSocketServer>}
      */
     stop = () => {
         return new Promise(
@@ -117,16 +118,23 @@ class YarlWebSocketServer extends EventEmitter {
                     return reject();
                 }
 
-                this.wss.close();
-                this.http.close();
+                this.wss.close(
+                    () => {
+                        this.http.close(
+                            () => {
+                                this.http.closeAllConnections();
 
-                this.http.closeAllConnections();
-                this.clients.forEach(client => client.terminate());
+                                this.emit(YarlWebSocketServer.Events.Shutdown);
 
-                this.wss = null;
-                this.http = null;
+                                this.wss = null;
+                                this.http = null;
 
-                return resolve();
+                                return resolve(this);
+                            }
+                        );
+                        
+                    }
+                );
             }
         );
     }
@@ -193,7 +201,17 @@ class YarlWebSocketServer extends EventEmitter {
      * @private
      */
     #on_wss_close = (err) => {
-        console.log('wss', InternalEvents.Wss.Close, err);
+        // todo: this is KICK_EVERYONE functionality
+        // will be part of an API
+        this.clients.forEach(
+            (client) => {
+                client.removeAllListeners();
+                client.terminate();
+            }
+        );
+        this.clients.clear();
+
+        console.log('wss', InternalEvents.Wss.Close, this.clients.size, err);
     }
 
     /**

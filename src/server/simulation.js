@@ -1,42 +1,112 @@
-import PhaseModel from '../model/phase.js';
-import TimeModel from '../model/time.js';
-import Action from '../shared/action.js';
 import YarlWebSocket from './ws.js';
+import Action from '../shared/action.js';
+
+import PhasesModel from '../model/phases.js';
+import TimeModel from '../model/time.js';
+import AreaModel from '../model/area.js';
 
 class Simulation {
-    phases;
-    phase;
-    time;
-    timer;
+    /**
+     * @type {Map<String, YarlWebSocket>}
+     */
+    #clients;
+
+    /**
+     * @type {Number}
+     */
+    #interval;
+
+    /**
+     * @type {PhasesModel}
+     */
+    #phases;
+
+    /**
+     * @type {TimeModel}
+     */
+    #time;
+
 
     constructor () {
-        this.phases = [
-            new PhaseModel('phase.plan', 5000),
-            new PhaseModel('phase.sim', 1000)
-        ];
-        this.phase_id = 0;
-        this.phase = this.phases[this.phase_id];
-        
-        this.time = new TimeModel();
-        this.time.left = this.phase.time;
-        this.timer = setInterval(this.#on_update, this.time.dt);
+        this.#clients = new Map();
+        this.#interval = null;
+
+        this.#phases = new PhasesModel(
+            [
+                {name: 'phase.plan', time: 5000},
+                {name: 'phase.buffer', time: 250},
+                {name: 'phase.sim', time: 750}
+            ]
+        );
+
+        this.#time = new TimeModel(250, 250);
+        this.#time.duration = 0;
+
+        this.area = new AreaModel();
+    }
+
+    /**
+     * 
+     * @returns {Boolean}
+     */
+    start = () => {
+        if(this.#interval !== null) {
+            return false;
+        }
+
+        this.#interval = setInterval(this.#on_update, this.#time.dt);
+
+        return true;
+    }
+
+    /**
+     * 
+     * @returns {Boolean}
+     */
+    stop = () => {
+        if(this.#interval === null) {
+            return false;
+        }
+
+        clearInterval(this.#interval);
+        this.#interval = null;
+
+        return true;
     }
 
     /**
      * 
      * @param {YarlWebSocket} ws 
+     * @returns {Boolean}
      */
     join = (ws) => {
+        if(this.#clients.has(ws.account) === true) {
+            return false;
+        }
+
+        if(this.#clients.size >= 10) {
+            return false;
+        }
+
+        this.#clients.set(ws.account, ws);
         ws.simulation = this;
 
         console.log('join', ws.account);
+
+        return true;
     }
 
     /**
      * 
      * @param {YarlWebSocket} ws 
+     * @returns {Boolean}
      */
     leave = (ws) => {
+        if(this.#clients.has(ws.account) === false) {
+            return false;
+        }
+
+        this.#clients.delete(ws.account);
         ws.simulation = null;
 
         console.log('leave', ws.account);
@@ -46,39 +116,60 @@ class Simulation {
      * 
      * @param {YarlWebSocket} ws 
      * @param {Action} action 
+     * @returns {Boolean}
      */
     command = (ws, action) => {
-        const ts = Date.now();
-        
-        console.log('command', ws.account, action);
-
-        if(this.phase.name === 'phase.sim') {
-            const dt = ts - this.time.timestamp;
-            if(dt > this.time.latency) {
-                console.log('too late', dt);
-                return;
-            }
-            
-            console.log('just in time', dt);
-            return;
+        if(this.#phases.name === 'phase.sim') {
+            console.log('..... to late');
+            return this.#on_reject_command(ws, action);
         }
 
-        console.log('in time');
+        if(this.#phases.name === 'phase.buffer') {
+            console.log('..... just in time');
+        } else {
+            console.log('..... in time');
+        }
+            
+        return this.#on_accept_command (ws, action);
     }
 
     #on_update = () => {
-        this.time.left -= this.time.dt;
+        this.#time.duration += this.#time.dt;
 
-        if(this.time.left <= 0) {
-            this.phase_id = (this.phase_id + 1) % this.phases.length;
-            this.phase = this.phases[this.phase_id];
-            
-            this.time.left = this.phase.time;
-            this.time.timestamp = Date.now();
+        if(this.#time.duration >= this.#phases.time) {
+            this.#phases.next();
 
+            this.#time.duration = 0;
+            this.#time.timestamp = Date.now();
+
+            if(this.#phases.name === 'phase.sim') {
+                console.log('+++++ sending');
+            } else {
+                console.log('+++++ receiving');
+            }
         }
 
-        console.log('#on_update', this.phase.name, this.time.left);
+        console.log('#on_update', this.#phases.name, this.#time.duration);
+    }
+
+    /**
+     * @param {YarlWebSocket} ws 
+     * @param {Action} action 
+     * @param {Number} dt
+     * @returns {true}
+     */
+    #on_accept_command = (ws, action, dt) => {
+        return true;
+    }
+
+    /**
+     * @param {YarlWebSocket} ws 
+     * @param {Action} action 
+     * @param {Number} dt
+     * @returns {false}
+     */
+    #on_reject_command = (ws, action,  dt) => {
+        return false;
     }
 }
 

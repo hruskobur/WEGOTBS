@@ -13,9 +13,10 @@ const server = new YarlWebSocketServer(
         host: '127.0.0.1',
         port: 11000
     }
-)
-.on(YarlWebSocketServer.Events.Join, simulation.join)
-.on(YarlWebSocketServer.Events.Leave, simulation.leave);
+);
+server.on(YarlWebSocketServer.Events.Join, simulation.join)
+server.on(YarlWebSocketServer.Events.Leave, simulation.leave);
+// server.on(YarlWebSocketServer.Events.Shutdown, () => {});
 
-// simulation.start();
+simulation.start();
 await server.start();

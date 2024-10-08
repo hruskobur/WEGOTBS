@@ -1,14 +1,35 @@
 class TimeModel {
+    /**
+     * @type {Number}
+     */
     dt;
-    left;
-    timestamp;
+    
+    /**
+     * @type {Number}
+     */
     latency;
 
-    constructor () {
-        this.dt = 250;
-        this.left = 0;
+    /**
+     * @type {Number}
+     */
+    duration;
+
+    /**
+     * @type {Number}
+     */
+    timestamp;
+
+    /**
+     * 
+     * @param {Number} dt 
+     * @param {Number} latency 
+     */
+    constructor (dt, latency) {
+        this.dt = dt;
+        this.latency = latency;
+        
+        this.duration = 0;
         this.timestamp = Date.now();
-        this.latency = 250;
     }
 }
 
