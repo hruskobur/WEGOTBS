@@ -74,24 +74,25 @@ class YarlWebSocket extends WebSocket {
         }
 
         const message = new Message().deserialize(data);
-
-        // check: client is allowed to send EXACTLY ONE action per message
-        if(message.length != 1) {
-            this.close(1000, 'kick');
-            
-            return;
-        }
-
         const action = message.actions[0];
 
-        if(action.name === 'ack') {
-            this.timestamp = action.data;
-            
-            return;
-        }
+        switch(action.name) {
+            case 'ack': {
+                this.timestamp = action.data;
 
-        // client has received an action, send this action to the simulation
-        this.simulation.command(this, action)
+                return;
+            }
+            case 'latency': {
+                console.log('latency', Date.now() - action.data);
+
+                return;
+            }
+            default: {
+                this.simulation.command(this, action)
+
+                return;
+            }
+        }
     }
 }
 

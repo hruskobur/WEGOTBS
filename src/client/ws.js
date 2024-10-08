@@ -81,6 +81,7 @@ class YarlWebSocket extends WebSocket {
      * @param {MessageEvent} event 
      */
     #on_message = (event) => {
+        // note: development version - setTimeout will be removed
         setTimeout(
             () => {
                 const message = new Message().deserialize(event.data);
@@ -88,10 +89,17 @@ class YarlWebSocket extends WebSocket {
                 while(message.length != 0) {
                     const action = message.shift();
 
-                    if(action.name === 'ack') {
-                        this.send(action.name, action.data);
-                        
-                        continue;
+                    switch(action.name) {
+                        case 'ack': {
+                            this.send(action.name, action.data);
+
+                            continue;
+                        }
+                        case 'latency': {
+                            this.send(action.name, action.data);
+
+                            continue;
+                        }
                     }
                     
                     window.dispatchEvent(

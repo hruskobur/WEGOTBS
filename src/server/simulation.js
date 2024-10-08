@@ -1,9 +1,9 @@
 import YarlWebSocket from './ws.js';
 import Action from '../shared/action.js';
-
 import PhasesModel from '../model/phases.js';
 import TimeModel from '../model/time.js';
 import AreaModel from '../model/area.js';
+import Message from '../shared/message.js';
 
 class Simulation {
     /**
@@ -26,23 +26,22 @@ class Simulation {
      */
     #time;
 
+    /** @type {AreaModel} */
+    #dummy_area;
 
     constructor () {
         this.#clients = new Map();
         this.#interval = null;
 
+        this.#time = new TimeModel(250);
+
         this.#phases = new PhasesModel(
-            [
-                {name: 'phase.plan', time: 5000},
-                {name: 'phase.buffer', time: 250},
-                {name: 'phase.sim', time: 750}
-            ]
-        );
+            5000,
+            this.#time.dt,
+            1000 - this.#time.dt
+        ); 
 
-        this.#time = new TimeModel(250, 250);
-        this.#time.duration = 0;
-
-        this.area = new AreaModel();
+        this.#dummy_area = new AreaModel();
     }
 
     /**
@@ -89,6 +88,7 @@ class Simulation {
         }
 
         this.#clients.set(ws.account, ws);
+        ws.timestamp = this.#time.timestamp;
         ws.simulation = this;
 
         console.log('join', ws.account);
@@ -107,69 +107,93 @@ class Simulation {
         }
 
         this.#clients.delete(ws.account);
+        ws.timestamp = null;
         ws.simulation = null;
 
         console.log('leave', ws.account);
     }
 
     /**
-     * 
+     * @public
      * @param {YarlWebSocket} ws 
      * @param {Action} action 
      * @returns {Boolean}
      */
     command = (ws, action) => {
-        if(this.#phases.name === 'phase.sim') {
-            console.log('..... to late');
-            return this.#on_reject_command(ws, action);
-        }
+        // note: merge PhaseModel.Phases.Plan & PhasesModel.Phases.Buffer
+        // once the console.log is not needed anymore
+        switch(this.#phases.name) {
+            case PhasesModel.Phases.Plan: {
+                console.log('..... in time');
 
-        if(this.#phases.name === 'phase.buffer') {
-            console.log('..... just in time');
-        } else {
-            console.log('..... in time');
-        }
-            
-        return this.#on_accept_command (ws, action);
-    }
+                this.#dummy_area.data += 1;
+                return true;
+            }
+            case PhasesModel.Phases.Buffer: {
+                console.log('..... just in time');
 
-    #on_update = () => {
-        this.#time.duration += this.#time.dt;
-
-        if(this.#time.duration >= this.#phases.time) {
-            this.#phases.next();
-
-            this.#time.duration = 0;
-            this.#time.timestamp = Date.now();
-
-            if(this.#phases.name === 'phase.sim') {
-                console.log('+++++ sending');
-            } else {
-                console.log('+++++ receiving');
+                this.#dummy_area.data += 1;
+                return true;
+            }
+            case PhasesModel.Phases.Simulation:
+            default: {
+                console.log('..... to late');
+                
+                return false;
             }
         }
-
-        console.log('#on_update', this.#phases.name, this.#time.duration);
     }
 
     /**
-     * @param {YarlWebSocket} ws 
-     * @param {Action} action 
-     * @param {Number} dt
-     * @returns {true}
+     * @private
      */
-    #on_accept_command = (ws, action, dt) => {
-        return true;
-    }
+    #on_update = () => {
+        this.#time.left += this.#time.dt;
 
-    /**
-     * @param {YarlWebSocket} ws 
-     * @param {Action} action 
-     * @param {Number} dt
-     * @returns {false}
-     */
-    #on_reject_command = (ws, action,  dt) => {
-        return false;
+        // phase: NOT DONE yet!
+        if(this.#time.left < this.#phases.duration) {
+            return;
+        }
+
+        // phase DONE!
+        this.#phases.next();
+        this.#time.left = 0;
+
+        // what to do now?
+        switch (this.#phases.name) {
+            case PhasesModel.Phases.Plan: {
+                this.#clients.forEach(client => {
+                    if(client.timestamp !== this.#time.timestamp) {
+                        console.log('..... failed timestamp check', client.timestamp, this.#time.timestamp);
+                    } else {
+                        console.log('..... timestamp check', client.timestamp, this.#time.timestamp);
+                    }
+                });
+                
+                this.#time.timestamp = Date.now();
+
+                console.log('..... new round has begun!', this.#time.timestamp);
+
+                break;
+            }
+            case PhasesModel.Phases.Buffer: {
+                console.log('..... still receiving commands', this.#time.timestamp);
+
+                break;
+            }
+            case PhasesModel.Phases.Simulation: {
+                console.log('..... sending the latest state', this.#time.timestamp);
+
+                const message = new Message()
+                .add('ack', this.#time.timestamp)
+                .add('update', this.#dummy_area.data)
+                .add('latency', Date.now())
+
+                this.#clients.forEach(client => client.send(message));
+
+                break;
+            }
+        }
     }
 }
 

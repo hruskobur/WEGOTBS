@@ -58,13 +58,13 @@ function on_command (e) {
 }
 
 function on_send_delay_input (e) {
-    ws.send_delay = e.target.value;
+    ws.send_delay = Number(e.target.value);
     
     console.log('send_delay', ws.send_delay);
 }
 
 function on_recv_delay_input (e) {
-    ws.recv_delay = e.target.value;
+    ws.recv_delay = Number(e.target.value);
     
     console.log('recv_delay', ws.recv_delay);
 }
