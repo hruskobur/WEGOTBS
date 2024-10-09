@@ -31,36 +31,39 @@ class YarlClientLatency {
     }
 
     /**
-     * Sends a latency command.
+     * Sends new latency action.
      * @public
+     * @param {Number} timestamp
      * @returns {YarlClient}
      */
-    command = () => {
-        this.#target_timestamp = Date.now();
+    send = (timestamp) => {
+        this.#target_timestamp = timestamp;
 
-        this.#ws.buffer.command(MessageProtocol.Latency, undefined);
+        this.#ws.buffer.send(MessageProtocol.Latency, undefined);
 
         console.log(this.#ws.uuid, 'latency.send');
 
-        return this.#ws
+        return this.#ws;
     }
 
     /**
      * Updates the latency value.
      * @public
-     * @returns 
+     * @returns {YarlClient}
      */
-    update = () => {
+    recv = () => {
         if(this.#target_timestamp == null) {
             this.#ws.close(1000, 'kick');
             
-            return;
+            return this.#ws;
         }
 
         this.value = Date.now() - this.#target_timestamp;
         this.#target_timestamp = null;
 
         console.log(this.#ws.uuid, 'latency.recv', this.value);
+
+        return this.#ws;
     }
 }
 

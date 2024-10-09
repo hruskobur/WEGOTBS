@@ -24,6 +24,14 @@ class TimeModel {
         this.left = 0;
         this.timestamp = Date.now();
     }
+
+    /**
+     * 
+     * @returns {Number}
+     */
+    now = () => {
+        return Date.now();
+    }
 }
 
 export default TimeModel;

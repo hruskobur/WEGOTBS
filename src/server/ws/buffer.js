@@ -23,30 +23,22 @@ class YarlWebSocketBuffer {
     }
 
     /**
-     * 
-     * @param {Action} action 
-     * @returns {YarlWebSocketBuffer}
-     */
-    action = (action) => {
-        this.message.actions.push(action);
-
-        return this;
-    }
-
-    /**
-     * 
+     * Sends new command to the buffer.
+     * @public
      * @param {String} name 
      * @param {*} data 
      * @returns {YarlWebSocketBuffer}
      */
-    command = (name, data) => {
+    send = (name, data) => {
         this.message.add(name, data);
 
         return this;
     }
 
+    
     /**
-     * 
+     * Flushes the buffer, sending all available data immediately.
+     * @public
      * @returns {YarlWebSocketBuffer}
      */
     flush = () => {

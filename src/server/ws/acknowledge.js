@@ -31,15 +31,15 @@ class YarlClientAck {
 
 
     /**
-     * Sends an acknowledge command.
+     * Sends new acknowledge action.
      * @public
      * @param {Number} timestamp
      * @returns {YarlClient}
      */
-    command = (timestamp) => {
+    send = (timestamp) => {
         this.#target_timestamp = timestamp;
 
-        this.#ws.buffer.command(MessageProtocol.Acknowledge, timestamp);
+        this.#ws.buffer.send(MessageProtocol.Acknowledge, timestamp);
 
         console.log(this.#ws.uuid, 'ack.send');
 
@@ -47,24 +47,29 @@ class YarlClientAck {
     }
 
     /**
-     * Updates the ack value.
+     * Updates the acknowledge value, based on the received action's data.
+     * @public
      * @param {Action} action 
+     * @returns {YarlClient}
      */
-    update = action => {
+    recv = action => {
         if(this.#target_timestamp == null) {
             this.#ws.close(1000, 'kick');
             
-            return;
+            return this.#ws;
         }
 
         this.value = action.data;
         this.#target_timestamp = null;
 
         console.log(this.#ws.uuid, 'ack.recv', this.value);
+
+        return this.#ws;
     }
     
     /**
-     * 
+     * Compares target_timestamp with current value.
+     * @public
      * @param {Number} target_timestamp 
      * @returns {Boolean}
      */

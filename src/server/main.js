@@ -1,6 +1,6 @@
 /* imports ********************************************************************/
 import YarlWebSocketServer from './wss.js';
-import Simulation from './simulation.js';
+import Simulation from './simulation/simulation.js';
 
 /* app ************************************************************************/
 const simulation = new Simulation();

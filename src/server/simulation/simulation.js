@@ -1,10 +1,8 @@
-import YarlClient from './ws/client.js';
-import Action from '../shared/action.js';
-import PhasesModel from '../model/phases.js';
-import TimeModel from '../model/time.js';
-import AreaModel from '../model/area.js';
-import Message from '../shared/message.js';
-import MessageProtocol from '../shared/protocol.js';
+import YarlClient from '../ws/client.js';
+import Action from '../../shared/action.js';
+import PhasesModel from '../../model/phases.js';
+import TimeModel from '../../model/time.js';
+import AreaModel from '../../model/area.js';
 
 class Simulation {
     /**
@@ -161,7 +159,7 @@ class Simulation {
                     }
                 });
                 
-                this.#time.timestamp = Date.now();
+                this.#time.timestamp = this.#time.now();
 
                 console.log('..... new round has begun!', this.#time.timestamp);
 
@@ -174,12 +172,16 @@ class Simulation {
             }
             case PhasesModel.Phases.Simulation: {
                 console.log('..... sending the latest state', this.#time.timestamp);
+                const now = this.#time.now();
+
+                const upd_cmnd = 'update';
+                const upd_data = this.#dummy_area.data;
 
                 this.#clients.forEach(client => {
                     client
-                    .latency.command()
-                    .acknowledge.command(this.#time.timestamp)
-                    .buffer.command('update', this.#dummy_area.data)
+                    .latency.send(now)
+                    .acknowledge.send(this.#time.timestamp)
+                    .buffer.send(upd_cmnd, upd_data)
                     .flush();
                 });
 

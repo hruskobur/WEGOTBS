@@ -49,7 +49,7 @@ class YarlClient extends WebSocket {
         this.latency = new YarlClientLatency(this);
         this.acknowledge = new YarlClientAck(this);
 
-        this.on(InternalEvents.Message, this.#on_message);
+        this.on(InternalEvents.Message, this.#recv);
     }
 
     /**
@@ -73,7 +73,7 @@ class YarlClient extends WebSocket {
      * @emits command
      * @param {*} data 
      */
-    #on_message = (data) => {
+    #recv = (data) => {
         const message = new Message().deserialize(data);
         if(message.length != 1) {
             this.close(1000, 'kick');
@@ -86,12 +86,12 @@ class YarlClient extends WebSocket {
         // note: very few cases, let's try switch in this version
         switch (action.name) {
             case MessageProtocol.Latency: {
-                this.latency.update(action);
+                this.latency.recv(action);
 
                 return;
             }
             case MessageProtocol.Acknowledge: {
-                this.acknowledge.update(action);
+                this.acknowledge.recv(action);
 
                 return;
             }
