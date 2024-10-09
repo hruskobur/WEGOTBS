@@ -1,13 +1,14 @@
-import YarlWebSocket from './ws.js';
+import YarlClient from './ws/client.js';
 import Action from '../shared/action.js';
 import PhasesModel from '../model/phases.js';
 import TimeModel from '../model/time.js';
 import AreaModel from '../model/area.js';
 import Message from '../shared/message.js';
+import MessageProtocol from '../shared/protocol.js';
 
 class Simulation {
     /**
-     * @type {Map<String, YarlWebSocket>}
+     * @type {Map<String, YarlClient>}
      */
     #clients;
 
@@ -75,11 +76,11 @@ class Simulation {
 
     /**
      * 
-     * @param {YarlWebSocket} ws 
+     * @param {YarlClient} ws 
      * @returns {Boolean}
      */
     join = (ws) => {
-        if(this.#clients.has(ws.account) === true) {
+        if(this.#clients.has(ws.uuid) === true) {
             return false;
         }
 
@@ -87,57 +88,47 @@ class Simulation {
             return false;
         }
 
-        this.#clients.set(ws.account, ws);
-        ws.timestamp = this.#time.timestamp;
-        ws.simulation = this;
+        this.#clients.set(ws.uuid, ws);
 
-        console.log('join', ws.account);
+        console.log('join', ws.uuid);
 
         return true;
     }
 
     /**
      * 
-     * @param {YarlWebSocket} ws 
+     * @param {YarlClient} ws 
      * @returns {Boolean}
      */
     leave = (ws) => {
-        if(this.#clients.has(ws.account) === false) {
+        if(this.#clients.has(ws.uuid) === false) {
             return false;
         }
 
-        this.#clients.delete(ws.account);
-        ws.timestamp = null;
-        ws.simulation = null;
+        this.#clients.delete(ws.uuid);
 
-        console.log('leave', ws.account);
+        console.log('leave', ws.uuid);
     }
 
     /**
      * @public
-     * @param {YarlWebSocket} ws 
+     * @param {YarlClient} ws 
      * @param {Action} action 
      * @returns {Boolean}
      */
     command = (ws, action) => {
-        // note: merge PhaseModel.Phases.Plan & PhasesModel.Phases.Buffer
-        // once the console.log is not needed anymore
         switch(this.#phases.name) {
-            case PhasesModel.Phases.Plan: {
+            case PhasesModel.Phases.Plan:
+            case PhasesModel.Phases.Buffer: {
                 console.log('..... in time');
 
                 this.#dummy_area.data += 1;
-                return true;
-            }
-            case PhasesModel.Phases.Buffer: {
-                console.log('..... just in time');
 
-                this.#dummy_area.data += 1;
                 return true;
             }
             case PhasesModel.Phases.Simulation:
             default: {
-                console.log('..... to late');
+                console.log('..... too late');
                 
                 return false;
             }
@@ -163,10 +154,10 @@ class Simulation {
         switch (this.#phases.name) {
             case PhasesModel.Phases.Plan: {
                 this.#clients.forEach(client => {
-                    if(client.timestamp !== this.#time.timestamp) {
-                        console.log('..... failed timestamp check', client.timestamp, this.#time.timestamp);
+                    if(client.acknowledge.compare(this.#time.timestamp) === false) {
+                        console.log('..... failed timestamp check', client.acknowledge.value, this.#time.timestamp);
                     } else {
-                        console.log('..... timestamp check', client.timestamp, this.#time.timestamp);
+                        console.log('..... timestamp check', client.acknowledge.value, this.#time.timestamp);
                     }
                 });
                 
@@ -184,12 +175,13 @@ class Simulation {
             case PhasesModel.Phases.Simulation: {
                 console.log('..... sending the latest state', this.#time.timestamp);
 
-                const message = new Message()
-                .add('ack', this.#time.timestamp)
-                .add('update', this.#dummy_area.data)
-                .add('latency', Date.now())
-
-                this.#clients.forEach(client => client.send(message));
+                this.#clients.forEach(client => {
+                    client
+                    .latency.command()
+                    .acknowledge.command(this.#time.timestamp)
+                    .buffer.command('update', this.#dummy_area.data)
+                    .flush();
+                });
 
                 break;
             }

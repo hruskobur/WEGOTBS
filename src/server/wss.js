@@ -3,8 +3,7 @@ import * as Http from 'node:http';
 import { Socket } from 'node:net';
 import { v4 as uuidv4 } from 'uuid';
 import { WebSocketServer } from 'ws';
-
-import YarlWebSocket from './ws.js';
+import YarlClient from './ws/client.js';
 
 /**
  * @typedef {Object} YarlWebSocketServerOptions
@@ -54,7 +53,7 @@ class YarlWebSocketServer extends EventEmitter {
     wss;
 
     /**
-     * @type {Map<String, YarlWebSocket>}
+     * @type {Map<String, YarlClient>}
      */
     clients;
 
@@ -67,7 +66,7 @@ class YarlWebSocketServer extends EventEmitter {
         // note: functionality-critical fixed configuration
         this.cfg = cfg;
         this.cfg.wss.noServer = true;
-        this.cfg.wss.WebSocket = YarlWebSocket;
+        this.cfg.wss.WebSocket = YarlClient;
         this.cfg.wss.clientTracking = false;
 
         this.wss = null;
@@ -188,11 +187,11 @@ class YarlWebSocketServer extends EventEmitter {
 
     /**
      * @private
-     * @param {YarlWebSocket} ws 
+     * @param {YarlClient} ws 
      * @param {Http.IncomingMessage} req 
      */
     #on_http_upgrade_handler = (ws, req) => {
-        ws.account = uuidv4();
+        ws.uuid = uuidv4();
 
         this.wss.emit(InternalEvents.Wss.Connection, ws/*, aditional data */);
     }
@@ -224,24 +223,24 @@ class YarlWebSocketServer extends EventEmitter {
 
     /**
      * @private
-     * @param {YarlWebSocket} ws 
+     * @param {YarlClient} ws 
      */
     #on_ws_connection = (ws) => {
-        console.log('ws', InternalEvents.Wss.Connection, ws.account);
+        console.log('ws', InternalEvents.Wss.Connection, ws.uuid);
 
-        this.clients.set(ws.account, ws);
+        this.clients.set(ws.uuid, ws);
         ws.on(InternalEvents.Ws.Close, this.#on_ws_close.bind(null, ws));
         this.emit(YarlWebSocketServer.Events.Join, ws);
     }
 
     /**
      * @private
-     * @param {YarlWebSocket} ws 
+     * @param {YarlClient} ws 
      */
     #on_ws_close = (ws) => {
-        console.log('ws', InternalEvents.Ws.Close, ws.account);
+        console.log('ws', InternalEvents.Ws.Close, ws.uuid);
 
-        this.clients.delete(ws.account);
+        this.clients.delete(ws.uuid);
         this.emit(YarlWebSocketServer.Events.Leave, ws);
     }
 

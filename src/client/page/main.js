@@ -1,21 +1,21 @@
 /* imports ********************************************************************/
 import Message from '../../shared/message.js';
-import YarlWebSocket from '../ws.js';
+import YarlClient from '../ws.js';
 
 /* app ************************************************************************/
 /**
- * @type {YarlWebSocket}
+ * @type {YarlClient}
  */
 let ws = null;
 
 function on_connect () {
-    if(ws !== null) {
+    if(ws !== null && ws.readyState === WebSocket.OPEN) {
         throw new Error();
     }
 
     console.clear();
 
-    ws = new YarlWebSocket(
+    ws = new YarlClient(
         `ws://127.0.0.1:11000`,
         []
     );
