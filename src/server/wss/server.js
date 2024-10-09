@@ -3,7 +3,8 @@ import * as Http from 'node:http';
 import { Socket } from 'node:net';
 import { v4 as uuidv4 } from 'uuid';
 import { WebSocketServer } from 'ws';
-import YarlClient from './ws/client.js';
+import YarlClient from '../ws/client.js';
+import Message from '../../shared/message.js';
 
 /**
  * @typedef {Object} YarlWebSocketServerOptions
@@ -30,10 +31,10 @@ const InternalEvents = Object.freeze({
     }
 });
 
-class YarlWebSocketServer extends EventEmitter {
+class YarlServer extends EventEmitter {
     static Events = Object.freeze({
-        Join: 'join',
-        Leave: 'leave',
+        Connected: 'connected',
+        Disconnected: 'disconnected',
         Shutdown: 'shutdown'
     });
 
@@ -77,7 +78,7 @@ class YarlWebSocketServer extends EventEmitter {
 
     /**
      * @public
-     * @returns {Promise<YarlWebSocketServer>}
+     * @returns {Promise<YarlServer>}
      */
     start = () => {
         return new Promise(
@@ -108,7 +109,8 @@ class YarlWebSocketServer extends EventEmitter {
     }
 
     /**
-     * @returns {Promise<YarlWebSocketServer>}
+     * @public
+     * @returns {Promise<YarlServer>}
      */
     stop = () => {
         return new Promise(
@@ -123,7 +125,7 @@ class YarlWebSocketServer extends EventEmitter {
                             () => {
                                 this.http.closeAllConnections();
 
-                                this.emit(YarlWebSocketServer.Events.Shutdown);
+                                this.emit(YarlServer.Events.Shutdown);
 
                                 this.wss = null;
                                 this.http = null;
@@ -137,7 +139,27 @@ class YarlWebSocketServer extends EventEmitter {
             }
         );
     }
-    
+
+    /**
+     * @public
+     * @param {String} uuid 
+     * @returns {YarlClient|null}
+     */
+    client = (uuid) => {
+        return this.clients.get(uuid);
+    }
+
+    /**
+     * @public
+     * @param {String} msg 
+     */
+    broadcast = (msg) => {
+        const message=  new Message()
+        .add('broadcast', msg);
+
+        this.clients.forEach(client => client.send(message));
+    }
+
     /**
      * @private
      */
@@ -193,15 +215,25 @@ class YarlWebSocketServer extends EventEmitter {
     #on_http_upgrade_handler = (ws, req) => {
         ws.uuid = uuidv4();
 
-        this.wss.emit(InternalEvents.Wss.Connection, ws/*, aditional data */);
+        // note: get the simulation uuid here as this will be part of the query
+        const uuid = 'dev.sim.0'
+        console.log('parsing query to get uuid', uuid);
+
+        // note: here is also a place, where obtain data from db, based on
+        // ws.uuid ... if needed
+        // . . .
+
+        this.wss.emit(
+            InternalEvents.Wss.Connection,
+            ws, uuid
+            /*additional data*/
+        );
     }
 
     /**
      * @private
      */
     #on_wss_close = (err) => {
-        // todo: this is KICK_EVERYONE functionality
-        // will be part of an API
         this.clients.forEach(
             (client) => {
                 client.removeAllListeners();
@@ -224,13 +256,14 @@ class YarlWebSocketServer extends EventEmitter {
     /**
      * @private
      * @param {YarlClient} ws 
+     * @param {String} uuid
      */
-    #on_ws_connection = (ws) => {
-        console.log('ws', InternalEvents.Wss.Connection, ws.uuid);
+    #on_ws_connection = (ws, uuid) => {
+        console.log('ws', InternalEvents.Wss.Connection, ws.uuid, uuid);
 
         this.clients.set(ws.uuid, ws);
         ws.on(InternalEvents.Ws.Close, this.#on_ws_close.bind(null, ws));
-        this.emit(YarlWebSocketServer.Events.Join, ws);
+        this.emit(YarlServer.Events.Connected, ws, uuid);
     }
 
     /**
@@ -241,7 +274,7 @@ class YarlWebSocketServer extends EventEmitter {
         console.log('ws', InternalEvents.Ws.Close, ws.uuid);
 
         this.clients.delete(ws.uuid);
-        this.emit(YarlWebSocketServer.Events.Leave, ws);
+        this.emit(YarlServer.Events.Disconnected, ws);
     }
 
     /**
@@ -254,4 +287,4 @@ class YarlWebSocketServer extends EventEmitter {
     }
 }
 
-export default YarlWebSocketServer;
+export default YarlServer;

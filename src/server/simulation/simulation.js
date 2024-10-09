@@ -6,9 +6,14 @@ import AreaModel from '../../model/area.js';
 
 class Simulation {
     /**
+     * @type {String}
+     */
+    #uuid;
+
+    /**
      * @type {Map<String, YarlClient>}
      */
-    #clients;
+    clients;
 
     /**
      * @type {Number}
@@ -28,8 +33,13 @@ class Simulation {
     /** @type {AreaModel} */
     #dummy_area;
 
-    constructor () {
-        this.#clients = new Map();
+    /**
+     * 
+     * @param {String} uuid 
+     */
+    constructor (uuid) {
+        this.#uuid = uuid;
+        this.clients = new Map();
         this.#interval = null;
 
         this.#time = new TimeModel(250);
@@ -43,6 +53,10 @@ class Simulation {
         this.#dummy_area = new AreaModel();
     }
 
+    get uuid () {
+        return this.#uuid;
+    }
+
     /**
      * 
      * @returns {Boolean}
@@ -53,6 +67,8 @@ class Simulation {
         }
 
         this.#interval = setInterval(this.#on_update, this.#time.dt);
+
+        console.log('start');
 
         return true;
     }
@@ -69,43 +85,9 @@ class Simulation {
         clearInterval(this.#interval);
         this.#interval = null;
 
-        return true;
-    }
-
-    /**
-     * 
-     * @param {YarlClient} ws 
-     * @returns {Boolean}
-     */
-    join = (ws) => {
-        if(this.#clients.has(ws.uuid) === true) {
-            return false;
-        }
-
-        if(this.#clients.size >= 10) {
-            return false;
-        }
-
-        this.#clients.set(ws.uuid, ws);
-
-        console.log('join', ws.uuid);
+        console.log('stop');
 
         return true;
-    }
-
-    /**
-     * 
-     * @param {YarlClient} ws 
-     * @returns {Boolean}
-     */
-    leave = (ws) => {
-        if(this.#clients.has(ws.uuid) === false) {
-            return false;
-        }
-
-        this.#clients.delete(ws.uuid);
-
-        console.log('leave', ws.uuid);
     }
 
     /**
@@ -151,7 +133,7 @@ class Simulation {
         // what to do now?
         switch (this.#phases.name) {
             case PhasesModel.Phases.Plan: {
-                this.#clients.forEach(client => {
+                this.clients.forEach(client => {
                     if(client.acknowledge.compare(this.#time.timestamp) === false) {
                         console.log('..... failed timestamp check', client.acknowledge.value, this.#time.timestamp);
                     } else {
@@ -161,23 +143,23 @@ class Simulation {
                 
                 this.#time.timestamp = this.#time.now();
 
-                console.log('..... new round has begun!', this.#time.timestamp);
+                console.log('..... new round: receiving commands', this.#time.timestamp);
 
                 break;
             }
             case PhasesModel.Phases.Buffer: {
-                console.log('..... still receiving commands', this.#time.timestamp);
+                console.log('..... buffer: receiving commands', this.#time.timestamp);
 
                 break;
             }
             case PhasesModel.Phases.Simulation: {
-                console.log('..... sending the latest state', this.#time.timestamp);
+                console.log('..... simulation: sending the latest state', this.#time.timestamp);
                 const now = this.#time.now();
 
                 const upd_cmnd = 'update';
                 const upd_data = this.#dummy_area.data;
 
-                this.#clients.forEach(client => {
+                this.clients.forEach(client => {
                     client
                     .latency.send(now)
                     .acknowledge.send(this.#time.timestamp)

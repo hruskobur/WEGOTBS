@@ -1,10 +1,12 @@
 /* imports ********************************************************************/
-import YarlWebSocketServer from './wss.js';
-import Simulation from './simulation/simulation.js';
+import YarlServer from './wss/server.js';
+import SimulationManager from './simulation/manager.js';
 
 /* app ************************************************************************/
-const simulation = new Simulation();
-const server = new YarlWebSocketServer(
+const simulation = new SimulationManager();
+simulation.create_default(true);
+
+const server = new YarlServer(
     {
         http: {
             noDelay: true
@@ -14,9 +16,27 @@ const server = new YarlWebSocketServer(
         port: 11000
     }
 );
-server.on(YarlWebSocketServer.Events.Join, simulation.join)
-server.on(YarlWebSocketServer.Events.Leave, simulation.leave);
-// server.on(YarlWebSocketServer.Events.Shutdown, () => {});
+server.on(YarlServer.Events.Connected, simulation.join)
+server.on(YarlServer.Events.Disconnected, simulation.leave);
+server.on(YarlServer.Events.Shutdown, () => {
+    simulation.simulations.forEach(s => s.stop())
+});
 
-simulation.start();
 await server.start();
+
+/* sandbox ********************************************************************/
+let shutdown_in = 10000;
+let interval = setInterval(() => {
+    shutdown_in -= 1000;
+
+    if(shutdown_in <= 0) {
+        clearInterval(interval);
+        server.stop();
+
+        return;
+    }
+
+    server.broadcast(`shutdown in: ${shutdown_in}`);
+
+
+}, 1000)

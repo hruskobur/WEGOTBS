@@ -48,6 +48,7 @@ class YarlClient extends WebSocket {
         this.buffer = new YarlWebSocketBuffer(this);
         this.latency = new YarlClientLatency(this);
         this.acknowledge = new YarlClientAck(this);
+        this.simulation = null;
 
         this.on(InternalEvents.Message, this.#recv);
     }
@@ -69,8 +70,25 @@ class YarlClient extends WebSocket {
     }
 
     /**
+     * @public
+     * @param {*|undefined} reason default=undefined
+     * @returns {YarlClient}
+     */
+    kick = (reason=undefined) => {
+        const message = new Message()
+        .add('kick', reason);
+
+        this.send(
+            message
+        );
+
+        this.close(1000);
+
+        return this;
+    }
+
+    /**
      * @private
-     * @emits command
      * @param {*} data 
      */
     #recv = (data) => {
@@ -96,9 +114,16 @@ class YarlClient extends WebSocket {
                 return;
             }
             default: {
-                // this.close(1000, 'kick');
+                // todo: some default simulation, that kicks
+                // once message is receved
+                // for now : if
+                if(this.simulation == null) {
+                    this.kick();
+                    
+                    return;
+                }
 
-                return;
+                this.simulation.recv(action);
             }
         }
     }
