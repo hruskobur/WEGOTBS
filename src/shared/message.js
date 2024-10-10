@@ -1,20 +1,24 @@
-import Action from './action.js';
+/**
+ * @typedef {Object} MessagePayload
+ * @property {String|Number} name
+ * @property {*} data
+ */
 
 /**
- * The unified server & client action container.
+ * The unified server & client message container.
  */
 class Message {
     /**
-     * @type {Array<Action>}
+     * @type {Array<MessagePayload>}
      */
-    actions;
+    payload;
 
     constructor () {
-        this.actions = [];
+        this.payload = [];
     }
 
     get length () {
-        return this.actions.length
+        return this.payload.length
     }
 
     /**
@@ -24,26 +28,26 @@ class Message {
      * @returns {Message} this
      */
     add (name, data) {
-        this.actions.push(
-            new Action(name, data)
+        this.payload.push(
+            {name, data}
         );
 
         return this;
     }
 
     /**
-     * Removes the first action from the array and returns it.
-     * @returns {Action}
+     * Removes the first payload from the internal array and returns it.
+     * @returns {MessagePayload}
      */
     shift () {
-        return this.actions.shift();
+        return this.payload.shift();
     }
 
     /**
      * @returns {Message} this
      */
     clear () {
-        this.actions = [];
+        this.payload = [];
 
         return this;
     }
