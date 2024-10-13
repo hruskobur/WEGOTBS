@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import Message from '../../shared/message.js';
 import YarlRoom from '../room/room.js';
+import PurgatoryRoom from '../room/specific/purgatory.js';
 
 const WebSocketOptions = Object.freeze({
     binary: false,
@@ -32,7 +33,7 @@ class YarlClient extends WebSocket {
         super(address, protocols, options);
 
         this.uuid = null;
-        this.room = null;
+        this.room = PurgatoryRoom;
 
         this.on(InternalEvents.Message, this.#recv);
     }
@@ -65,14 +66,35 @@ class YarlClient extends WebSocket {
     }
 
     /**
+     * @public
+     * @param {String|Number} name 
+     * @param {*} data 
+     * @returns {YarlClient} this
+     */
+    command = (name, data) => {
+        // todo: switch based on 'name'
+        // . . .
+
+        this.room.send(this, name, data);
+        
+        return this;
+    }
+
+    /**
      * @private
      * @param {*} data 
      */
     #recv = (data) => {
         const message = new Message().deserialize(data);
+        if(message.length != 1) {
+            this.kick();
+            
+            return;
+        }
 
-        // todo: message's payload name switch
-        // . . .
+        const payload = message.shift();
+
+        this.command(payload.name, payload.data);
     }
 }
 

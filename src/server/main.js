@@ -19,3 +19,7 @@ await YarlServer.init(
 );
 
 console.log('... initialization finished');
+
+console.log('... create dev room');
+
+YarlRooms.create('dev').start();

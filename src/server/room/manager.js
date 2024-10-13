@@ -15,6 +15,8 @@ async function init () {
         throw new Error();
     }
 
+    Rooms = new Map();
+
     return new Promise(
         (resolve, reject) => {
 
