@@ -98,6 +98,10 @@ async function term () {
     return new Promise(
         (resolve, reject) => {
             wss.close(() => {
+                // note: wss' (the YarlClient) removal is handled by YarlClient
+                // manager
+                // . . .
+
                 http.close(() => {
                     http.closeAllConnections();
 

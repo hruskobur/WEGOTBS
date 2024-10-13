@@ -4,6 +4,7 @@ import ServerEvents from '../server/events.js';
 
 import ClientsEvents from './events.js';
 import YarlClient from './client.js';
+import Message from '../../shared/message.js';
 
 /**
  * @type {Map<String, YarlClient>}
@@ -45,7 +46,8 @@ async function term () {
 
     return new Promise(
         (resolve, reject) => {
-            purge();
+            Clients.forEach(client => client.removeAllListeners().close(1000));
+            Clients.clear();
             Clients = null;
 
             console.log('clients.term');
@@ -55,33 +57,26 @@ async function term () {
 }
 
 /**
- * 
- * @param {String} name 
- * @param {*} data 
+ * Broadcasts a message to every connected client.
+ * @public
+ * @param {String|Number} name message's name
+ * @param {*} data message's data
  */
-function broadcast (name, data) {}
+function broadcast (name, data) {
+    const msg = new Message().add(name, data);
+
+    Clients.forEach(client => client.send(msg));
+}
 
 /**
- * 
+ * Returns the YarlClient instance identified by the uuid
+ * or null if no such UUID exists.
+ * @public
  * @param {String} uuid 
  * @returns {YarlClient|null}
  */
 function client (uuid) {
     return Clients.get(uuid);
-}
-
-/**
- * 
- * @param {*} reason default=undefined
- */
-function purge (reason=undefined) {
-    Clients.forEach(client => {
-        client.removeAllListeners();
-        client.close(1000, reason);
-    });
-    Clients.clear();
-
-    YarlEvents.emit(ClientsEvents.Purge);
 }
 
 /**
@@ -106,5 +101,5 @@ function on_client_disconnected (ws) {
 
 export {
     init, term,
-    client, broadcast, purge
+    client, broadcast
 };
