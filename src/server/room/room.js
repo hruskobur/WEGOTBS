@@ -147,15 +147,16 @@ class YarlRoom {
         switch(this.phases.name) {
             case PhasesModel.Phases.Plan:
             case PhasesModel.Phases.Buffer: {
-                YarlLog('room', 'recv', 'in time', client.uuid, action);
+                // YarlLog('room', 'recv', 'in time', client.uuid, action);
 
                 this.actions.push(action);
+                console.log(this.actions);
 
                 break;
             }
             case PhasesModel.Phases.Simulation:
             default: {
-                YarlLog('room', 'recv', 'too late', client.uuid, action);
+                // YarlLog('room', 'recv', 'too late', client.uuid, action);
 
                 break;
             }
@@ -168,6 +169,8 @@ class YarlRoom {
      * @private
      */
     #on_update = () => {
+        const _s = performance.now();
+
         this.time.left += this.time.dt;
 
         // phase: NOT DONE yet!
@@ -184,56 +187,57 @@ class YarlRoom {
             case PhasesModel.Phases.Plan: {
                 this.clients.forEach(client => {
                     if(client.measurement.ack === this.time.timestamp) {
-                        YarlLog(
-                            'room', 'update',
-                            'timestamp checked', 
-                            client.uuid,
-                            client.measurement.ack, this.time.timestamp
-                        );
+                        // YarlLog(
+                        //     'room', 'update',
+                        //     'timestamp checked', 
+                        //     client.uuid,
+                        //     client.measurement.ack, this.time.timestamp
+                        // );
                     } else {
-                        YarlLog(
-                            'room', 'update',
-                            'failed timestamp check', 
-                            client.uuid,
-                            client.measurement.ack, this.time.timestamp
-                        );
+                        // YarlLog(
+                        //     'room', 'update',
+                        //     'failed timestamp check', 
+                        //     client.uuid,
+                        //     client.measurement.ack, this.time.timestamp
+                        // );
                     }
                 });
                 
                 this.time.timestamp = this.time.now();
 
-                YarlLog(
-                    'room', 'update',
-                    'prepare phase',
-                    Date.now(),
-                    this.time.timestamp
-                );
+                // YarlLog(
+                //     'room', 'update',
+                //     'prepare phase',
+                //     Date.now(),
+                //     this.time.timestamp
+                // );
 
                 break;
             }
             case PhasesModel.Phases.Buffer: {
-                YarlLog(
-                    'room', 'update',
-                    'buffer phase', 
-                    Date.now(),
-                    this.time.timestamp
-                );
+                // YarlLog(
+                //     'room', 'update',
+                //     'buffer phase', 
+                //     Date.now(),
+                //     this.time.timestamp
+                // );
+
                 break;
             }
             case PhasesModel.Phases.Simulation: {
-                YarlLog(
-                    'room', 'update',
-                    'simulation phase', 
-                    Date.now(),
-                    this.time.timestamp
-                );
+                // YarlLog(
+                //     'room', 'update',
+                //     'simulation phase', 
+                //     Date.now(),
+                //     this.time.timestamp
+                // );
 
                 const now = this.time.now();
-                
+
                 const msg = new YarlMessage()
                 .create(MessageProtocol.Ack, this.time.timestamp)
                 .create(MessageProtocol.Latency, undefined)
-                // .push(...this.actions)
+                .push(this.actions);
 
                 this.clients.forEach(client => {
                     client
@@ -242,9 +246,14 @@ class YarlRoom {
                     .send(msg);
                 });
 
+                this.actions.length = 0;
+
                 break;
             }
         }
+
+        const _e = performance.now();
+        YarlLog('room', 'update', this.uuid, (_e-_s), Date.now());
     }
 }
 
