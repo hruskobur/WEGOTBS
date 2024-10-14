@@ -16,7 +16,7 @@ function on_connect () {
     console.clear();
 
     ws = new YarlClient(
-        `ws://127.0.0.1:11000`,
+        `ws://127.0.0.1:11000/room.dev`,
         []
     );
 

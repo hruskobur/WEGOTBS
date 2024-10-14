@@ -4,7 +4,9 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { v4 as uuid } from 'uuid';
 
 import YarlEmitter from '../core/emitter.js';
-import YarlClient from '../client/client.js';
+
+import YarlClient from './client.js';
+import { Clients, broadcast, client } from './clients.js';
 
 import ServerEvents from './events.js';
 
@@ -32,8 +34,6 @@ const InternalEvents = Object.freeze({
         Close: 'close'
     }
 });
-
-
 
 /**
  * @type {Http.Server}
@@ -98,9 +98,11 @@ async function term () {
     return new Promise(
         (resolve, reject) => {
             wss.close(() => {
-                // note: wss' (the YarlClient) removal is handled by YarlClient
-                // manager
-                // . . .
+                Clients.forEach(client => {
+                    client.removeAllListeners();
+                    client.close()
+                });
+                Clients.clear();
 
                 http.close(() => {
                     http.closeAllConnections();
@@ -164,11 +166,17 @@ function on_http_upgrade_done (ws, req) {
     ws.uuid = uuid();
     
     // todo: we need to get the room's uuid from the initial query
-    // note: this workflow may change
+    // note: this workflow may change; for now, just a substring
     // . . .
+    const room_uuid = req.url.substring(1);
 
-    // note: to emit custom data, just add another argument here
-    wss.emit(InternalEvents.Wss.Connection, ws, /* additional args */);
+    // note: to emit custom data, just add another argument at last position
+    wss.emit(
+        InternalEvents.Wss.Connection,
+        ws,
+        room_uuid
+        /*, additional args */
+    );
 }
 
 /**
@@ -195,11 +203,14 @@ function on_wss_close () {
 /**
  * @private
  * @param {YarlClient} ws 
+ * @param {String} room_uuid 
  */
-function on_wss_connection (ws) {
-    ws.on(InternalEvents.Ws.Close, on_ws_close.bind(null, ws));
+function on_wss_connection (ws, room_uuid) {
+    ws.on(InternalEvents.Ws.Close, on_ws_close.bind(null, ws, room_uuid));
 
-    YarlEmitter.emit(ServerEvents.Connected, ws);
+    Clients.set(ws.uuid, ws);
+
+    YarlEmitter.emit(ServerEvents.Ready, ws, room_uuid);
 }
 
 /**
@@ -215,9 +226,12 @@ function on_wss_error (err) {
  * @param {YarlClient} ws 
  */
 function on_ws_close (ws) {
-    YarlEmitter.emit(ServerEvents.Disconnected, ws);
+    Clients.delete(ws.uuid);
+
+    YarlEmitter.emit(ServerEvents.Done, ws);
 }
 
 export {
-    init, term
+    init, term,
+    client, broadcast
 };

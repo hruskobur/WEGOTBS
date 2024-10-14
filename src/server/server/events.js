@@ -1,6 +1,6 @@
 const ServerEvents = Object.freeze({
-    Connected: 'connected',
-    Disconnected: 'disconnected'
+    Ready: 'client.ready',
+    Done: 'client.done'
 });
 
 export default ServerEvents;

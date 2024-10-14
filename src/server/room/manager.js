@@ -1,5 +1,10 @@
 import Message from '../../shared/message.js';
+
+import ServerEvents from '../server/events.js';
+import YarlClient from '../server/client.js';
+
 import YarlRoom from './room.js';
+import YarlEmitter from '../core/emitter.js';
 
 /**
  * @type {Map<String|Number, YarlRoom>}
@@ -19,6 +24,8 @@ async function init () {
 
     return new Promise(
         (resolve, reject) => {
+            YarlEmitter.on(ServerEvents.Ready, on_client_ready);
+            YarlEmitter.on(ServerEvents.Done, on_client_done);
 
             console.log('rooms.init');
             return resolve();
@@ -37,6 +44,8 @@ async function term () {
     
     return new Promise(
         (resolve, reject) => {
+            YarlEmitter.off(ServerEvents.Ready, on_client_ready);
+
             Rooms.forEach(room => room.stop());
             Rooms.clear();
             Rooms = null;
@@ -88,6 +97,34 @@ function destroy (uuid, reason=undefined) {
     Rooms.delete(uuid);
 
     return room;
+}
+
+/**
+ * @private
+ * @param {YarlClient} client 
+ * @param {String} room_uuid 
+ */
+function on_client_ready (client, room_uuid) {
+    const to_join = room(room_uuid);
+    if(to_join == null) {
+        client.kick();
+        return;
+    }
+
+    to_join.join(client);
+}
+
+/**
+ * @private
+ * @param {YarlClient} client 
+ */
+function on_client_done (client) {
+    const to_leave = client.room;
+    if(to_leave == null) {
+        return;
+    }
+
+    to_leave.leave(client);
 }
 
 export {

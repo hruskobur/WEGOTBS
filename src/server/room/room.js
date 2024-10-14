@@ -1,4 +1,4 @@
-import YarlClient from '../client/client.js';
+import YarlClient from '../server/client.js';
 import PurgatoryRoom from './specific/purgatory.js';
 
 class YarlRoom {
@@ -74,6 +74,8 @@ class YarlRoom {
         this.clients.set(client.uuid, client);
         client.room = this;
 
+        console.log('room.join', this.uuid, client.uuid);
+
         return this;
     }
 
@@ -91,6 +93,8 @@ class YarlRoom {
 
         client.room = PurgatoryRoom;
         this.clients.delete(client.uuid);
+
+        console.log('room.leave', this.uuid, client.uuid);
 
         return this;
     }
