@@ -36,8 +36,8 @@ class YarlMessage {
      * @param {Action} action 
      * @returns {YarlMessage} this
      */
-    push (action) {
-        this.actions.push(action);
+    push (...action) {
+        this.actions.push(...action);
 
         return this;
     }
