@@ -1,4 +1,4 @@
-import YarlClient from '../../server/client.js';
+import YarlClient from '../../server/clients/client.js';
 
 const PurgatoryRoom = {
     /**

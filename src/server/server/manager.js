@@ -5,8 +5,8 @@ import { v4 as uuid } from 'uuid';
 
 import YarlEmitter from '../core/emitter.js';
 
-import YarlClient from './client.js';
-import { Clients, broadcast, client } from './clients.js';
+import YarlClient from './clients/client.js';
+import { Clients, broadcast, client } from './clients/manager.js';
 
 import ServerEvents from './events.js';
 

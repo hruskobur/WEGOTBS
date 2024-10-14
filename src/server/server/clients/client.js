@@ -1,7 +1,14 @@
 import WebSocket from 'ws';
-import Message from '../../shared/message.js';
-import YarlRoom from '../room/room.js';
-import PurgatoryRoom from '../room/specific/purgatory.js';
+
+import MessageProtocol from '../../../shared/protocol.js';
+import Message from '../../../shared/message.js';
+
+import YarlRoom from '../../room/room.js';
+import PurgatoryRoom from '../../room/specific/purgatory.js';
+
+import YarlClientBuffer from './buffer.js';
+import YarlClientAck from './ack.js';
+import YarlClientLatency from './latency.js';
 
 const WebSocketOptions = Object.freeze({
     binary: false,
@@ -24,6 +31,21 @@ class YarlClient extends WebSocket {
     room;
 
     /**
+     * @type {YarlClientBuffer}
+     */
+    buffer;
+
+    /**
+     * @type {YarlClientAck}
+     */
+    ack;
+
+    /**
+     * @type {YarlClientLatency}
+     */
+    latency
+
+    /**
      * 
      * @param {String|URL} address 
      * @param {String|Array<String>|undefined} protocols 
@@ -34,6 +56,10 @@ class YarlClient extends WebSocket {
 
         this.uuid = null;
         this.room = PurgatoryRoom;
+
+        this.buffer = new YarlClientBuffer(this);
+        this.ack = new YarlClientAck(this);
+        this.latency = new YarlClientLatency(this);
 
         this.on(InternalEvents.Message, this.#recv);
     }
@@ -75,7 +101,7 @@ class YarlClient extends WebSocket {
         // todo: switch based on 'name'
         // . . .
 
-        this.room.send(this, name, data);
+        this.room.recv(this, name, data);
         
         return this;
     }
@@ -92,9 +118,25 @@ class YarlClient extends WebSocket {
             return;
         }
 
-        const payload = message.shift();
+        // note: very few cases, let's try switch in this version
+        const action = message.actions[0];
+        switch (action.name) {
+            case MessageProtocol.Latency: {
+                this.latency.recv(action);
 
-        this.command(payload.name, payload.data);
+                return;
+            }
+            case MessageProtocol.Acknowledge: {
+                this.ack.recv(action);
+
+                return;
+            }
+            default: {
+                this.room.recv(this, action);
+
+                return;
+            }
+        }
     }
 }
 

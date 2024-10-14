@@ -7,12 +7,7 @@ class TimeModel {
     /**
      * @type {Number}
      */
-    latency;
-
-    /**
-     * @type {Number}
-     */
-    duration;
+    left;
 
     /**
      * @type {Number}
@@ -22,14 +17,20 @@ class TimeModel {
     /**
      * 
      * @param {Number} dt 
-     * @param {Number} latency 
      */
-    constructor (dt, latency) {
+    constructor (dt) {
         this.dt = dt;
-        this.latency = latency;
         
-        this.duration = 0;
+        this.left = 0;
         this.timestamp = Date.now();
+    }
+
+    /**
+     * 
+     * @returns {Number}
+     */
+    now = () => {
+        return Date.now();
     }
 }
 

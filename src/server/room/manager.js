@@ -1,10 +1,11 @@
 import Message from '../../shared/message.js';
 
-import ServerEvents from '../server/events.js';
-import YarlClient from '../server/client.js';
-
-import YarlRoom from './room.js';
 import YarlEmitter from '../core/emitter.js';
+
+import ServerEvents from '../server/events.js';
+import YarlClient from '../server/clients/client.js';
+
+import YarlRoom from '../room/room.js';
 
 /**
  * @type {Map<String|Number, YarlRoom>}

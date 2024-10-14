@@ -1,4 +1,10 @@
-import YarlClient from '../server/client.js';
+import Action from '../../shared/action.js';
+
+import PhasesModel from '../../model/phases.js';
+import TimeModel from '../../model/time.js';
+
+import YarlClient from '../server/clients/client.js';
+
 import PurgatoryRoom from './specific/purgatory.js';
 
 class YarlRoom {
@@ -18,14 +24,31 @@ class YarlRoom {
     interval;
 
     /**
+     * @type {TimeModel}
+     */
+    time;
+
+    /**
+     * @type {PhasesModel}
+     */
+    phases;
+
+    /**
      * 
      * @param {String|Number} uuid 
      */
     constructor (uuid) {
         this.uuid = uuid;
         this.clients = new Map();
-
         this.interval = null;
+
+        this.time = new TimeModel(250);
+        this.phases = new PhasesModel(
+            5000,
+            this.time.dt,
+            1000 - this.time.dt
+        );
+
     }
 
     /**
@@ -38,7 +61,9 @@ class YarlRoom {
             return this;
         }
 
-        this.interval = setInterval(this.#on_update, 1000);
+        this.interval = setInterval(this.#on_update, this.time.dt);
+
+        console.log('room.start', this.uuid);
 
         return this;
     }
@@ -55,6 +80,8 @@ class YarlRoom {
 
         clearInterval(this.interval);
         this.interval = null;
+
+        console.log('room.stop', this.uuid);
 
         return this;
     }
@@ -100,15 +127,28 @@ class YarlRoom {
     }
 
     /**
-     * Sends a command with a payload from the specified YarlClient to this 
-     * room.
+     * Receives an from the specified YarlClient.
      * @param {YarlClient} client 
-     * @param {String|Number} command 
-     * @param {*} payload 
+     * @param {Action} action
      * @returns {YarlRoom} this
      */
-    send = (client, command, payload) => {
-        console.log(client.uuid, command, payload);
+    recv = (client, action) => {
+        switch(this.phases.name) {
+            case PhasesModel.Phases.Plan:
+            case PhasesModel.Phases.Buffer: {
+                console.log('..... in time');
+
+                break;
+            }
+            case PhasesModel.Phases.Simulation:
+            default: {
+                console.log('..... too late');
+
+                break;
+            }
+        }
+
+        console.log(client.uuid, action);
 
         return this;
     }
@@ -117,7 +157,57 @@ class YarlRoom {
      * @private
      */
     #on_update = () => {
-        console.log(this.uuid, Date.now());
+        this.time.left += this.time.dt;
+
+        // phase: NOT DONE yet!
+        if(this.time.left < this.phases.duration) {
+            return;
+        }
+
+        // phase DONE!
+        this.phases.next();
+        this.time.left = 0;
+
+        // what to do now?
+        switch (this.phases.name) {
+            case PhasesModel.Phases.Plan: {
+                this.clients.forEach(client => {
+                    if(client.ack.compare(this.time.timestamp) === false) {
+                        console.log('..... failed timestamp check', client.ack.value, this.time.timestamp);
+                    } else {
+                        console.log('..... timestamp check', client.ack.value, this.time.timestamp);
+                    }
+                });
+                
+                this.time.timestamp = this.time.now();
+
+                console.log('..... new round: receiving commands', this.time.timestamp);
+
+                break;
+            }
+            case PhasesModel.Phases.Buffer: {
+                console.log('..... buffer: receiving commands', this.time.timestamp);
+
+                break;
+            }
+            case PhasesModel.Phases.Simulation: {
+                console.log('..... simulation: sending the latest state', this.time.timestamp);
+                const now = this.time.now();
+
+                const upd_cmnd = 'update';
+                const upd_data = {};
+
+                this.clients.forEach(client => {
+                    client
+                    .latency.send(now)
+                    .ack.send(this.time.timestamp)
+                    .buffer.send(upd_cmnd, upd_data)
+                    .flush();
+                });
+
+                break;
+            }
+        }
     }
 }
 
