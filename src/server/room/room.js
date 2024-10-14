@@ -8,6 +8,8 @@ import TimeModel from '../../model/time.js';
 import YarlClient from '../server/clients/client.js';
 
 import PurgatoryRoom from './specific/purgatory.js';
+import YarlMessage from '../../shared/message.js';
+import MessageProtocol from '../../shared/protocol.js';
 
 class YarlRoom {
     /**
@@ -36,6 +38,11 @@ class YarlRoom {
     phases;
 
     /**
+     * DEV: just dev action queue
+     */
+    actions;
+
+    /**
      * 
      * @param {String|Number} uuid 
      */
@@ -50,6 +57,8 @@ class YarlRoom {
             this.time.dt,
             1000 - this.time.dt
         );
+
+        this.actions = [];
 
     }
 
@@ -138,8 +147,9 @@ class YarlRoom {
         switch(this.phases.name) {
             case PhasesModel.Phases.Plan:
             case PhasesModel.Phases.Buffer: {
-
                 YarlLog('room', 'recv', 'in time', client.uuid, action);
+
+                this.actions.push(action);
 
                 break;
             }
@@ -173,19 +183,19 @@ class YarlRoom {
         switch (this.phases.name) {
             case PhasesModel.Phases.Plan: {
                 this.clients.forEach(client => {
-                    if(client.ack.compare(this.time.timestamp) === false) {
+                    if(client.measurement.ack === this.time.timestamp) {
                         YarlLog(
                             'room', 'update',
                             'failed timestamp check', 
                             client.uuid,
-                            client.ack.value, this.time.timestamp
+                            client.ack, this.time.timestamp
                         );
                     } else {
                         YarlLog(
                             'room', 'update',
                             'timestamp checked', 
                             client.uuid,
-                            client.ack.value, this.time.timestamp
+                            client.ack, this.time.timestamp
                         );
                     }
                 });
@@ -214,17 +224,19 @@ class YarlRoom {
                     'simulation phase', 
                     this.time.timestamp
                 );
-                const now = this.time.now();
 
-                const upd_cmnd = 'update';
-                const upd_data = {};
+                const now = this.time.now();
+                
+                const msg = new YarlMessage()
+                .create(MessageProtocol.Ack, this.time.timestamp)
+                .create(MessageProtocol.Latency, undefined)
+                // .push(...this.actions)
 
                 this.clients.forEach(client => {
                     client
-                    .latency.send(now)
-                    .ack.send(this.time.timestamp)
-                    .buffer.send(upd_cmnd, upd_data)
-                    .flush();
+                    .measurement.update_latency(now)
+                    .measurement.update_ack(this.time.timestamp)
+                    .send(msg);
                 });
 
                 break;

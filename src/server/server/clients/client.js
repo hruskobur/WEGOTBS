@@ -1,14 +1,11 @@
 import WebSocket from 'ws';
 
 import MessageProtocol from '../../../shared/protocol.js';
-import Message from '../../../shared/message.js';
+import YarlMessage from '../../../shared/message.js';
 
 import YarlRoom from '../../room/room.js';
 import PurgatoryRoom from '../../room/specific/purgatory.js';
-
-import YarlClientBuffer from './buffer.js';
-import YarlClientAck from './ack.js';
-import YarlClientLatency from './latency.js';
+import YarlClientMeasurement from './measurement.js';
 
 const WebSocketOptions = Object.freeze({
     binary: false,
@@ -31,19 +28,9 @@ class YarlClient extends WebSocket {
     room;
 
     /**
-     * @type {YarlClientBuffer}
+     * @type {YarlClientMeasurement}
      */
-    buffer;
-
-    /**
-     * @type {YarlClientAck}
-     */
-    ack;
-
-    /**
-     * @type {YarlClientLatency}
-     */
-    latency
+    measurement;
 
     /**
      * 
@@ -56,10 +43,7 @@ class YarlClient extends WebSocket {
 
         this.uuid = null;
         this.room = PurgatoryRoom;
-
-        this.buffer = new YarlClientBuffer(this);
-        this.ack = new YarlClientAck(this);
-        this.latency = new YarlClientLatency(this);
+        this.measurement = new YarlClientMeasurement(this);
 
         this.on(InternalEvents.Message, this.#recv);
     }
@@ -67,7 +51,7 @@ class YarlClient extends WebSocket {
     /**
      * @public
      * @override
-     * @param {Message} message 
+     * @param {YarlMessage} message 
      * @returns {YarlClient} this
      */
     send = (message) => {
@@ -75,6 +59,8 @@ class YarlClient extends WebSocket {
             message.serialize(),
             WebSocketOptions
         );
+
+        return this;
     }
 
     /**
@@ -83,7 +69,7 @@ class YarlClient extends WebSocket {
      * @returns {YarlClient} this
      */
     kick = (reason=undefined) => {
-        const msg = new Message().add('kick', reason);
+        const msg = new YarlMessage().create('kick', reason);
 
         this.send(msg);
         this.close(1000);
@@ -98,9 +84,6 @@ class YarlClient extends WebSocket {
      * @returns {YarlClient} this
      */
     command = (name, data) => {
-        // todo: switch based on 'name'
-        // . . .
-
         this.room.recv(this, name, data);
         
         return this;
@@ -111,7 +94,7 @@ class YarlClient extends WebSocket {
      * @param {*} data 
      */
     #recv = (data) => {
-        const message = new Message().deserialize(data);
+        const message = new YarlMessage().deserialize(data);
         if(message.length != 1) {
             this.kick();
             
@@ -122,12 +105,12 @@ class YarlClient extends WebSocket {
         const action = message.actions[0];
         switch (action.name) {
             case MessageProtocol.Latency: {
-                this.latency.recv(action);
+                this.measurement.update_latency(Date.now());
 
                 return;
             }
-            case MessageProtocol.Acknowledge: {
-                this.ack.recv(action);
+            case MessageProtocol.Ack: {
+                this.measurement.update_ack(action.data)
 
                 return;
             }

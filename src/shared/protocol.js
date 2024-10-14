@@ -1,6 +1,6 @@
 const MessageProtocol = Object.freeze({
     Latency: 'latency',
-    Acknowledge: 'ack'
+    Ack: 'ack'
 });
 
 export default MessageProtocol;

@@ -1,4 +1,5 @@
 import Message from '../shared/message.js';
+import MessageProtocol from '../shared/protocol.js';
 
 class YarlWebSocket extends WebSocket {
     static Events = Object.freeze({
@@ -32,7 +33,7 @@ class YarlWebSocket extends WebSocket {
      */
     send = (name, data) => {
         const message = new Message()
-        .add(name, data);
+        .create(name, data);
 
         // note: development version - setTimeout will be removed
         setTimeout(
@@ -90,13 +91,13 @@ class YarlWebSocket extends WebSocket {
                     const action = message.shift();
 
                     switch(action.name) {
-                        case 'ack': {
+                        case MessageProtocol.Ack: {
                             this.send(action.name, action.data);
 
                             continue;
                         }
-                        case 'latency': {
-                            this.send(action.name, action.data);
+                        case MessageProtocol.Latency: {
+                            this.send(action.name, undefined);
 
                             continue;
                         }

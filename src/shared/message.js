@@ -3,7 +3,7 @@ import Action from './action.js';
 /**
  * The unified server & client message container.
  */
-class Message {
+class YarlMessage {
     /**
      * @type {Array<Action>}
      */
@@ -21,12 +21,23 @@ class Message {
      * 
      * @param {String|Number} name 
      * @param {*} data 
-     * @returns {Message} this
+     * @returns {YarlMessage} this
      */
-    add (name, data) {
+    create (name, data) {
         this.actions.push(
             {name, data}
         );
+
+        return this;
+    }
+
+    /**
+     * @public
+     * @param {Action} action 
+     * @returns {YarlMessage} this
+     */
+    push (action) {
+        this.actions.push(action);
 
         return this;
     }
@@ -40,7 +51,7 @@ class Message {
     }
 
     /**
-     * @returns {Message} this
+     * @returns {YarlMessage} this
      */
     clear () {
         this.actions = [];
@@ -57,7 +68,7 @@ class Message {
 
     /**
      * @param {String} data
-     * @returns {Message} this
+     * @returns {YarlMessage} this
      */
     deserialize = (data) => {
         Object.assign(
@@ -69,4 +80,4 @@ class Message {
     }
 }
 
-export default Message;
+export default YarlMessage;
