@@ -1,12 +1,29 @@
 import YarlClient from './client.js';
 
 class YarlClientMeasurement {
+    /**
+     * @type {YarlClient}
+     */
     #client;
 
+    /**
+     * @type {Array<Number>}
+     */
     #lats;
+
+    /**
+     * @type {Array<Number>}
+     */
     #acks;
 
+    /**
+     * @type {Number}
+     */
     latency;
+
+    /**
+     * @type {Number}
+     */
     ack;
 
     /**
@@ -33,17 +50,12 @@ class YarlClientMeasurement {
 
         if(length === 1) {
             this.latency = null;
-            console.log('latency start');
         } else if(length === 2) {
             this.latency = this.#lats[1] - this.#lats[0];
             this.#lats.length = 0;
-
-            console.log('latency end', this.latency);
         } else {
             this.latency = null;
             this.#client.kick();
-
-            console.log('latency kick');
         }
 
         return this.#client;
@@ -59,8 +71,6 @@ class YarlClientMeasurement {
 
         if(length === 1) {
             this.ack = null;
-
-            console.log('ack start', this.#acks);
         } else if(length === 2) {
             if(this.#acks[0] === this.#acks[1]) {
                 this.ack = timestamp;
@@ -68,18 +78,12 @@ class YarlClientMeasurement {
                 this.ack = null;
             }
             this.#acks.length = 0;
-
-            console.log('ack end', this.#acks, this.ack);
         } else {
-            console.log('ack kick', this.#acks);
-
             this.ack = null;
             this.#client.kick();
-
         }
 
         return this.#client;
-
     }
 }
 

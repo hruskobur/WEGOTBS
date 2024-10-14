@@ -1,3 +1,5 @@
+import YarlMessage from '../../../shared/message.js';
+
 import YarlClient from './client.js';
 
 /**
@@ -12,7 +14,7 @@ const Clients = new Map();
  * @param {*} data message's data
  */
 function broadcast (name, data) {
-    const msg = new Message().add(name, data);
+    const msg = new YarlMessage().add(name, data);
 
     Clients.forEach(client => client.send(msg));
 }

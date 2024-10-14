@@ -204,7 +204,8 @@ class YarlRoom {
 
                 YarlLog(
                     'room', 'update',
-                    'prepare phase', 
+                    'prepare phase',
+                    Date.now(),
                     this.time.timestamp
                 );
 
@@ -214,6 +215,7 @@ class YarlRoom {
                 YarlLog(
                     'room', 'update',
                     'buffer phase', 
+                    Date.now(),
                     this.time.timestamp
                 );
                 break;
@@ -222,6 +224,7 @@ class YarlRoom {
                 YarlLog(
                     'room', 'update',
                     'simulation phase', 
+                    Date.now(),
                     this.time.timestamp
                 );
 

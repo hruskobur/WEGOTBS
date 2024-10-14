@@ -6,6 +6,7 @@ import YarlMessage from '../../../shared/message.js';
 import YarlRoom from '../../room/room.js';
 import PurgatoryRoom from '../../room/specific/purgatory.js';
 import YarlClientMeasurement from './measurement.js';
+import YarlLog from '../../core/logger.js';
 
 const WebSocketOptions = Object.freeze({
     binary: false,
@@ -106,6 +107,11 @@ class YarlClient extends WebSocket {
         switch (action.name) {
             case MessageProtocol.Latency: {
                 this.measurement.update_latency(Date.now());
+                
+                YarlLog(
+                    'client', 'latency',
+                    this.uuid, this.measurement.latency
+                );
 
                 return;
             }

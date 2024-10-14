@@ -1,4 +1,4 @@
-import Message from '../shared/message.js';
+import YarlMessage from '../shared/message.js';
 import MessageProtocol from '../shared/protocol.js';
 
 class YarlWebSocket extends WebSocket {
@@ -32,7 +32,7 @@ class YarlWebSocket extends WebSocket {
      * @returns {YarlWebSocket}
      */
     send = (name, data) => {
-        const message = new Message()
+        const message = new YarlMessage()
         .create(name, data);
 
         // note: development version - setTimeout will be removed
@@ -85,7 +85,7 @@ class YarlWebSocket extends WebSocket {
         // note: development version - setTimeout will be removed
         setTimeout(
             () => {
-                const message = new Message().deserialize(event.data);
+                const message = new YarlMessage().deserialize(event.data);
 
                 while(message.length != 0) {
                     const action = message.shift();
