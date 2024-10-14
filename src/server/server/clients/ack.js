@@ -42,8 +42,6 @@ class YarlClientAck {
 
         this.#ws.buffer.send(MessageProtocol.Acknowledge, timestamp);
 
-        console.log(this.#ws.uuid, 'ack.send');
-
         return this.#ws;
     }
 
@@ -62,8 +60,6 @@ class YarlClientAck {
 
         this.value = action.data;
         this.#target_timestamp = null;
-
-        console.log(this.#ws.uuid, 'ack.recv', this.value);
 
         return this.#ws;
     }

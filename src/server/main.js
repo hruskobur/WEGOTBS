@@ -1,13 +1,9 @@
-import YarlEmitter from './core/emitter.js';
+import { YarlLogInit } from './core/logger.js';
 
 import * as YarlServer from './server/manager.js';
-import ServerEvents from './server/events.js';
-
 import * as YarlRooms from './room/manager.js';
-import RoomEvents from './room/events.js';
 
-console.log('... starting initialization');
-
+YarlLogInit('json');
 await YarlRooms.init();
 await YarlServer.init(
     {
@@ -19,9 +15,4 @@ await YarlServer.init(
         port: 11000
     }
 );
-
-console.log('... initialization finished');
-
-console.log('... create dev room');
-
 YarlRooms.create('room.dev').start();

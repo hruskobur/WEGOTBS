@@ -1,3 +1,5 @@
+import YarlLog from '../core/logger.js';
+
 import Action from '../../shared/action.js';
 
 import PhasesModel from '../../model/phases.js';
@@ -63,7 +65,7 @@ class YarlRoom {
 
         this.interval = setInterval(this.#on_update, this.time.dt);
 
-        console.log('room.start', this.uuid);
+        YarlLog('room', 'start', this.uuid);
 
         return this;
     }
@@ -81,7 +83,7 @@ class YarlRoom {
         clearInterval(this.interval);
         this.interval = null;
 
-        console.log('room.stop', this.uuid);
+        YarlLog('room', 'stop', this.uuid);
 
         return this;
     }
@@ -101,7 +103,7 @@ class YarlRoom {
         this.clients.set(client.uuid, client);
         client.room = this;
 
-        console.log('room.join', this.uuid, client.uuid);
+        YarlLog('room', 'join', this.uuid, client.uuid);
 
         return this;
     }
@@ -121,7 +123,7 @@ class YarlRoom {
         client.room = PurgatoryRoom;
         this.clients.delete(client.uuid);
 
-        console.log('room.leave', this.uuid, client.uuid);
+        YarlLog('room', 'leave', this.uuid, client.uuid);
 
         return this;
     }
@@ -136,19 +138,18 @@ class YarlRoom {
         switch(this.phases.name) {
             case PhasesModel.Phases.Plan:
             case PhasesModel.Phases.Buffer: {
-                console.log('..... in time');
+
+                YarlLog('room', 'recv', 'in time', client.uuid, action);
 
                 break;
             }
             case PhasesModel.Phases.Simulation:
             default: {
-                console.log('..... too late');
+                YarlLog('room', 'recv', 'too late', client.uuid, action);
 
                 break;
             }
         }
-
-        console.log(client.uuid, action);
 
         return this;
     }
@@ -173,25 +174,46 @@ class YarlRoom {
             case PhasesModel.Phases.Plan: {
                 this.clients.forEach(client => {
                     if(client.ack.compare(this.time.timestamp) === false) {
-                        console.log('..... failed timestamp check', client.ack.value, this.time.timestamp);
+                        YarlLog(
+                            'room', 'update',
+                            'failed timestamp check', 
+                            client.uuid,
+                            client.ack.value, this.time.timestamp
+                        );
                     } else {
-                        console.log('..... timestamp check', client.ack.value, this.time.timestamp);
+                        YarlLog(
+                            'room', 'update',
+                            'timestamp checked', 
+                            client.uuid,
+                            client.ack.value, this.time.timestamp
+                        );
                     }
                 });
                 
                 this.time.timestamp = this.time.now();
 
-                console.log('..... new round: receiving commands', this.time.timestamp);
+                YarlLog(
+                    'room', 'update',
+                    'prepare phase', 
+                    this.time.timestamp
+                );
 
                 break;
             }
             case PhasesModel.Phases.Buffer: {
-                console.log('..... buffer: receiving commands', this.time.timestamp);
-
+                YarlLog(
+                    'room', 'update',
+                    'buffer phase', 
+                    this.time.timestamp
+                );
                 break;
             }
             case PhasesModel.Phases.Simulation: {
-                console.log('..... simulation: sending the latest state', this.time.timestamp);
+                YarlLog(
+                    'room', 'update',
+                    'simulation phase', 
+                    this.time.timestamp
+                );
                 const now = this.time.now();
 
                 const upd_cmnd = 'update';

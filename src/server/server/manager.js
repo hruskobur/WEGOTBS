@@ -4,6 +4,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { v4 as uuid } from 'uuid';
 
 import YarlEmitter from '../core/emitter.js';
+import YarlLog from '../core/logger.js';
 
 import YarlClient from './clients/client.js';
 import { Clients, broadcast, client } from './clients/manager.js';
@@ -77,7 +78,7 @@ async function init (cfg) {
             http.listen(
                 cfg.port, cfg.host,
                 () => {
-                    console.log('server.init');
+                    YarlLog('server', 'init');
                     return resolve();
                 }
             );
@@ -110,7 +111,7 @@ async function term () {
                     http = null
                     wss = null;
 
-                    console.log('server.term');
+                    YarlLog('server', 'term');
                     return resolve();
                 });
             })
@@ -122,7 +123,7 @@ async function term () {
  * @private
  */
 function on_http_listening () {
-    console.log('http.listening', http.address());
+    YarlLog('http', 'listening', http.address());
 }
 
 /**
@@ -132,7 +133,7 @@ function on_http_listening () {
  * @param {Buffer} header 
  */
 function on_http_upgrade (req, socket, header) {
-    console.log('http.upgrade', req.headers);
+    YarlLog('http', 'upgrade', req.headers);
 
     // todo: check CORS
     // todo: check protocols
@@ -183,21 +184,21 @@ function on_http_upgrade_done (ws, req) {
  * @private
  */
 function on_http_close () {
-    console.log('http.close');
+    YarlLog('http', 'close');
 }
 
 /**
  * @private
  */
 function on_wss_listening () {
-    console.log('wss.listening', wss.address());
+    YarlLog('wss', 'listening', wss.address());
 }
 
 /**
  * @private
  */
 function on_wss_close () {
-    console.log('wss.close');
+    YarlLog('wss', 'close');
 }
 
 /**

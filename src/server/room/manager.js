@@ -1,6 +1,7 @@
-import Message from '../../shared/message.js';
-
 import YarlEmitter from '../core/emitter.js';
+import YarlLog from '../core/logger.js';
+
+import Message from '../../shared/message.js';
 
 import ServerEvents from '../server/events.js';
 import YarlClient from '../server/clients/client.js';
@@ -28,7 +29,7 @@ async function init () {
             YarlEmitter.on(ServerEvents.Ready, on_client_ready);
             YarlEmitter.on(ServerEvents.Done, on_client_done);
 
-            console.log('rooms.init');
+            YarlLog('rooms', 'init');
             return resolve();
         }
     )
@@ -51,7 +52,7 @@ async function term () {
             Rooms.clear();
             Rooms = null;
 
-            console.log('rooms.reject');
+            YarlLog('rooms', 'term');
             return resolve();
         }
     )

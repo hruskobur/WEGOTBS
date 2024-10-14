@@ -41,8 +41,6 @@ class YarlClientLatency {
 
         this.#ws.buffer.send(MessageProtocol.Latency, undefined);
 
-        console.log(this.#ws.uuid, 'latency.send');
-
         return this.#ws;
     }
 
@@ -61,8 +59,6 @@ class YarlClientLatency {
 
         this.value = Date.now() - this.#target_timestamp;
         this.#target_timestamp = null;
-
-        console.log(this.#ws.uuid, 'latency.recv', this.value);
 
         return this.#ws;
     }
