@@ -186,16 +186,16 @@ class YarlRoom {
                     if(client.measurement.ack === this.time.timestamp) {
                         YarlLog(
                             'room', 'update',
-                            'failed timestamp check', 
+                            'timestamp checked', 
                             client.uuid,
-                            client.ack, this.time.timestamp
+                            client.measurement.ack, this.time.timestamp
                         );
                     } else {
                         YarlLog(
                             'room', 'update',
-                            'timestamp checked', 
+                            'failed timestamp check', 
                             client.uuid,
-                            client.ack, this.time.timestamp
+                            client.measurement.ack, this.time.timestamp
                         );
                     }
                 });

@@ -60,8 +60,8 @@ class YarlClientMeasurement {
         if(length === 1) {
             this.ack = null;
 
-            console.log('ack start');
-        } else if(this.#lats === 2) {
+            console.log('ack start', this.#acks);
+        } else if(length === 2) {
             if(this.#acks[0] === this.#acks[1]) {
                 this.ack = timestamp;
             } else {
@@ -69,12 +69,13 @@ class YarlClientMeasurement {
             }
             this.#acks.length = 0;
 
-            console.log('ack end', this.ack);
+            console.log('ack end', this.#acks, this.ack);
         } else {
+            console.log('ack kick', this.#acks);
+
             this.ack = null;
             this.#client.kick();
 
-            console.log('ack kick');
         }
 
         return this.#client;
