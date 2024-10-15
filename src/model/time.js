@@ -7,7 +7,7 @@ class TimeModel {
     /**
      * @type {Number}
      */
-    left;
+    duration;
 
     /**
      * @type {Number}
@@ -21,7 +21,7 @@ class TimeModel {
     constructor (dt) {
         this.dt = dt;
         
-        this.left = 0;
+        this.duration = 0;
         this.timestamp = Date.now();
     }
 

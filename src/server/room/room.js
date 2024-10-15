@@ -137,31 +137,115 @@ class YarlRoom {
     }
 
     /**
-     * Receives an from the specified YarlClient.
+     * Receives an Acton from the YarlClient.
      * @param {YarlClient} client 
      * @param {Action} action
      * @returns {YarlRoom} this
      */
     command = (client, action) => {
-        switch(this.phases.name) {
-            case PhasesModel.Phases.Plan:
-            case PhasesModel.Phases.Buffer: {
-                // YarlLog('room', 'recv', 'in time', client.uuid, action);
+        const _s = performance.now();
 
-                this.actions.push(action);
-                console.log(this.actions);
+        switch(this.phases.name) {
+            case PhasesModel.Phases.Plan: {
+                this.#on_command_phase_plan(client, action);
 
                 break;
             }
-            case PhasesModel.Phases.Simulation:
-            default: {
-                // YarlLog('room', 'recv', 'too late', client.uuid, action);
+            case PhasesModel.Phases.Buffer: {
+                this.#on_command_phase_buffer(client, action);
 
                 break;
+            }
+            case PhasesModel.Phases.Simulation: {
+                this.#on_command_phase_simulation(client, action);
+
+                break;
+            }
+            default: {
+                break
             }
         }
 
+        const _e = performance.now();
+        YarlLog('room', 'command', this.uuid, client.uuid, (_e-_s), Date.now());
+
         return this;
+    }
+
+    /**
+     * @private
+     * @param {YarlClient} client 
+     * @param {Action} action 
+     */
+    #on_command_phase_plan = (client, action) => {
+        this.actions.push(action);
+    }
+
+    /**
+     * @private
+     * @param {YarlClient} client 
+     * @param {Action} action 
+     */
+    #on_command_phase_buffer = (client, action) => {}
+
+    /**
+     * @private
+     * @param {YarlClient} client 
+     * @param {Action} action 
+     */
+    #on_command_phase_simulation = (client, action) => {}
+
+    /**
+     * @private
+     */
+    #on_update_phase_plan = () => {
+        const msg = new YarlMessage()
+        .create(MessageProtocol.Phase, PhasesModel.Phases.Plan);
+
+        for (const [uuid, client] of this.clients) {
+            if(client.control.ack !== this.time.timestamp) {
+                client.kick();
+
+                continue;
+            }
+
+            client.send(msg);
+        }
+
+        this.time.timestamp = this.time.now();
+    }
+
+    /**
+     * @private
+     */
+    #on_update_phase_buffer = () => {
+        const msg = new YarlMessage()
+        .create(MessageProtocol.Phase, PhasesModel.Phases.Simulation);
+
+        for (const [uuid, client] of this.clients) {
+            client.send(msg);
+        }
+    }
+
+    /**
+     * @private
+     */
+    #on_update_phase_simulation = () => {
+        const now = this.time.now();
+
+        const msg = new YarlMessage()
+        .push(this.actions)
+        .create(MessageProtocol.Ack, this.time.timestamp)
+        .create(MessageProtocol.Latency, undefined);
+
+        this.clients.forEach(client => {
+            client
+            .control.update_latency(now)
+            .control.update_ack(this.time.timestamp)
+            .send(msg);
+        });
+
+        this.actions.length = 0;
     }
 
     /**
@@ -170,61 +254,34 @@ class YarlRoom {
     #on_update = () => {
         const _s = performance.now();
 
-        this.time.left += this.time.dt;
-
-        // phase: NOT DONE yet!
-        if(this.time.left < this.phases.duration) {
+        // update: the current phase is not done yet
+        this.time.duration += this.time.dt;
+        if(this.time.duration < this.phases.duration) {
             return;
         }
 
-        // phase DONE!
+        // update: the current phase has ended
         this.phases.next();
-        this.time.left = 0;
+        this.time.duration = 0;
 
-        // what to do now?
+        // update: new phase
         switch (this.phases.name) {
             case PhasesModel.Phases.Plan: {
-                this.clients.forEach(client => {
-                    if(client.control.ack !== this.time.timestamp) {
-                        client.kick();
-                    }
-                });
-                
-                this.time.timestamp = this.time.now();
+                this.#on_update_phase_plan();
 
                 break;
             }
             case PhasesModel.Phases.Buffer: {
-                const msg = new YarlMessage().create('phase', 'sim');
-                
-                this.clients.forEach(client => client.send(msg));
+                this.#on_update_phase_buffer();
 
                 break;
             }
             case PhasesModel.Phases.Simulation: {
-                // YarlLog(
-                //     'room', 'update',
-                //     'simulation phase', 
-                //     Date.now(),
-                //     this.time.timestamp
-                // );
+                this.#on_update_phase_simulation();
 
-                const now = this.time.now();
-
-                const msg = new YarlMessage()
-                .push(this.actions)
-                .create(MessageProtocol.Ack, this.time.timestamp)
-                .create(MessageProtocol.Latency, undefined);
-
-                this.clients.forEach(client => {
-                    client
-                    .control.update_latency(now)
-                    .control.update_ack(this.time.timestamp)
-                    .send(msg);
-                });
-
-                this.actions.length = 0;
-
+                break;
+            }
+            default: {
                 break;
             }
         }
