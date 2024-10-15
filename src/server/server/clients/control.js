@@ -1,6 +1,6 @@
 import YarlClient from './client.js';
 
-class YarlClientMeasurement {
+class YarlClientControl {
     /**
      * @type {YarlClient}
      */
@@ -87,4 +87,4 @@ class YarlClientMeasurement {
     }
 }
 
-export default YarlClientMeasurement;
+export default YarlClientControl;

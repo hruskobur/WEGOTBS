@@ -4,8 +4,9 @@ import MessageProtocol from '../../../shared/protocol.js';
 import YarlMessage from '../../../shared/message.js';
 
 import YarlRoom from '../../room/room.js';
-import PurgatoryRoom from '../../room/specific/purgatory.js';
-import YarlClientMeasurement from './measurement.js';
+import YarlRoomPurgatory from '../../room/purgatory.js';
+
+import YarlClientControl from './control.js';
 import YarlLog from '../../core/logger.js';
 
 const WebSocketOptions = Object.freeze({
@@ -24,14 +25,14 @@ class YarlClient extends WebSocket {
     uuid;
 
     /**
-     * @type {YarlRoom|null} 
+     * @type {YarlClientControl}
      */
-    room;
+    control;
 
     /**
-     * @type {YarlClientMeasurement}
+     * @type {YarlRoom} 
      */
-    measurement;
+    room;
 
     /**
      * 
@@ -43,10 +44,11 @@ class YarlClient extends WebSocket {
         super(address, protocols, options);
 
         this.uuid = null;
-        this.room = PurgatoryRoom;
-        this.measurement = new YarlClientMeasurement(this);
+        this.control = new YarlClientControl(this);
+        
+        this.room = YarlRoomPurgatory;
 
-        this.on(InternalEvents.Message, this.#recv);
+        this.on(InternalEvents.Message, this.#on_message);
     }
 
     /**
@@ -79,22 +81,10 @@ class YarlClient extends WebSocket {
     }
 
     /**
-     * @public
-     * @param {String|Number} name 
-     * @param {*} data 
-     * @returns {YarlClient} this
-     */
-    command = (name, data) => {
-        this.room.recv(this, name, data);
-        
-        return this;
-    }
-
-    /**
      * @private
      * @param {*} data 
      */
-    #recv = (data) => {
+    #on_message = (data) => {
         const message = new YarlMessage().deserialize(data);
         if(message.length != 1) {
             this.kick();
@@ -106,22 +96,22 @@ class YarlClient extends WebSocket {
         const action = message.actions[0];
         switch (action.name) {
             case MessageProtocol.Latency: {
-                this.measurement.update_latency(Date.now());
+                this.control.update_latency(Date.now());
                 
                 YarlLog(
                     'client', 'latency',
-                    this.uuid, this.measurement.latency
+                    this.uuid, this.control.latency
                 );
 
                 return;
             }
             case MessageProtocol.Ack: {
-                this.measurement.update_ack(action.data)
+                this.control.update_ack(action.data)
 
                 return;
             }
             default: {
-                this.room.recv(this, action);
+                this.room.command(this, action);
 
                 return;
             }
