@@ -4,8 +4,8 @@ import Action from '../../shared/action.js';
 import YarlMessage from '../../shared/message.js';
 import MessageProtocol from '../../shared/protocol.js';
 
-import PhasesModel from '../../model/phases.js';
-import TimeModel from '../../model/time.js';
+import PhasesModel from '../model/phases.js';
+import TimeModel from '../model/time.js';
 
 import YarlClient from '../server/clients/client.js';
 
