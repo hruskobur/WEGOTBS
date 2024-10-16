@@ -3,3 +3,6 @@ node_modules/
 
 #the general "ignore me" prefix
 _*
+
+# build directory
+build/

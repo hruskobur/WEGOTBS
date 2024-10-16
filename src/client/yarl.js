@@ -1,6 +1,5 @@
 /* imports ********************************************************************/
-import Message from '../../shared/message.js';
-import YarlClient from '../ws.js';
+import YarlClient from './client/ws.js';
 
 /* app ************************************************************************/
 /**

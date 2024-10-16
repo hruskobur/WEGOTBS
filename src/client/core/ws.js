@@ -1,5 +1,5 @@
-import YarlMessage from '../shared/message.js';
-import MessageProtocol from '../shared/protocol.js';
+import YarlMessage from '../../shared/message.js';
+import MessageProtocol from '../../shared/protocol.js';
 
 class YarlWebSocket extends WebSocket {
     static Events = Object.freeze({
